@@ -1,0 +1,6 @@
+name: AzisabaGift
+version: @version@
+main: net.azisaba.gift.spigot.SpigotPlugin
+commands:
+  promo:
+    permission: azisabagift.command.promo
