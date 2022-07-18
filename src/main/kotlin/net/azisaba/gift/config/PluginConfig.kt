@@ -21,6 +21,9 @@ data class PluginConfig(
         lateinit var instance: PluginConfig
 
         fun loadConfig(dataDirectory: Path, logInfo: (message: String) -> Unit = {}) {
+            if (!Files.isDirectory(dataDirectory)) {
+                Files.createDirectory(dataDirectory)
+            }
             val configPath = dataDirectory.resolve("config.yml")
             logInfo("Loading config from $configPath")
             val comment = """

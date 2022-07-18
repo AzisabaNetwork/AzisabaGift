@@ -2,11 +2,12 @@ package net.azisaba.gift.objects
 
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.serializer
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.serializerOrNull
 import net.azisaba.gift.DatabaseManager
 import net.azisaba.gift.JSON
 import net.azisaba.gift.coroutines.letSuspend
+import org.intellij.lang.annotations.Language
 import java.lang.reflect.Parameter
 import java.sql.ResultSet
 import kotlin.reflect.KClass
@@ -16,12 +17,16 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
 
     abstract val toValues: suspend (rs: ResultSet) -> Collection<T>
 
-    suspend fun find(sql: String, vararg args: Any): Collection<T> =
+    suspend fun find(@Language("SQL") sql: String, vararg args: Any): Collection<T> =
         DatabaseManager
-            .executeQuery(sql, args)
-            .letSuspend(toValues)
+            .executeQuery(sql, *args)
+            .letSuspend { result ->
+                result.use { (rs) ->
+                    toValues(rs)
+                }
+            }
 
-    suspend fun findSingle(sql: String, vararg args: Any): T? = find(sql, args).let {
+    suspend fun findSingle(@Language("SQL") sql: String, vararg args: Any): T? = find(sql, *args).let {
         if (it.isEmpty()) null else it.first()
     }
 
@@ -29,23 +34,25 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
      * Select rows from the table. [sql] is a SQL query. [args] is a list of arguments. Order of columns in [sql] must
      * match the order of arguments of constructor of [T].
      */
-    suspend fun select(sql: String, vararg args: Any): Collection<T> =
+    suspend fun select(@Language("SQL") sql: String, vararg args: Any): Collection<T> =
         DatabaseManager
-            .executeQuery(sql, args)
-            .letSuspend {
-                val values = mutableListOf<T>()
-                val ctr = clazz.constructors.first()
-                while (it.next()) {
-                    val ctrArgs = mutableListOf<Any>()
-                    ctr.parameters.forEachIndexed { index, param ->
-                        ctrArgs.add(param.extractValue(index + 1, it))
+            .executeQuery(sql, *args)
+            .letSuspend { result ->
+                result.use { (rs) ->
+                    val values = mutableListOf<T>()
+                    val ctr = clazz.constructors.first()
+                    while (rs.next()) {
+                        val ctrArgs = mutableListOf<Any>()
+                        ctr.parameters.forEachIndexed { index, param ->
+                            ctrArgs.add(param.extractValue(index + 1, rs))
+                        }
+                        ctr.newInstance(*ctrArgs.toTypedArray()).apply {
+                            @Suppress("UNCHECKED_CAST")
+                            values.add(this as T)
+                        }
                     }
-                    ctr.newInstance(*ctrArgs.toTypedArray()).apply {
-                        @Suppress("UNCHECKED_CAST")
-                        values.add(this as T)
-                    }
+                    values
                 }
-                values
             }
 
     @OptIn(InternalSerializationApi::class)
@@ -61,8 +68,13 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
             String::class.java -> rs.getString(i)
             else -> {
                 val annotation = type.getAnnotation(Serializable::class.java)
-                val serializer = annotation.with.serializerOrNull() ?: type.kotlin.serializer()
-                JSON.decodeFromString(serializer, rs.getString(i))
+                val serializer = annotation?.with?.serializerOrNull()// ?: type.kotlin.serializerOrNull()
+                if (serializer == null) {
+                    JSON.decodeFromString(rs.getString(1))
+                } else {
+                    //JSON.decodeFromString(serializer, rs.getString(i))
+                    JSON.decodeFromString(rs.getString(i))
+                }
                 //throw IllegalArgumentException("Unsupported type: $type")
             }
         }

@@ -7,11 +7,18 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.modules.PolymorphicModuleBuilder
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
+import net.azisaba.gift.objects.DebugMessage
+import net.azisaba.gift.objects.Everyone
+import net.azisaba.gift.objects.ExpirationStatus
+import net.azisaba.gift.objects.FirstJoinedAfter
+import net.azisaba.gift.objects.FirstJoinedBefore
+import net.azisaba.gift.objects.Handler
+import net.azisaba.gift.objects.MultiplePlayers
 import net.azisaba.gift.objects.Selector
+import net.azisaba.gift.objects.SinglePlayer
 import net.azisaba.gift.serializers.DynamicLookupSerializer
 import net.azisaba.gift.serializers.UUIDSerializer
 import java.util.UUID
@@ -21,11 +28,36 @@ val JSON = Json {
     serializersModule = SerializersModule {
         contextual(Any::class, DynamicLookupSerializer)
         contextual(UUID::class, UUIDSerializer)
-        fun PolymorphicModuleBuilder<Selector>.registerProjectSubclasses() {
-            subclass(Selector::class)
+        /*
+        fun PolymorphicModuleBuilder<Selector>.registerSelectorSubclasses() { subclass(Selector::class) }
+        fun PolymorphicModuleBuilder<Handler>.registerHandlerSubclasses() { subclass(Handler::class) }
+        fun PolymorphicModuleBuilder<ExpirationStatus>.registerExpirationStatusSubclasses() { subclass(ExpirationStatus::class) }
+        polymorphic(Any::class) {
+            registerSelectorSubclasses()
+            registerHandlerSubclasses()
+            registerExpirationStatusSubclasses()
         }
-        polymorphic(Any::class) { registerProjectSubclasses() }
-        polymorphic(Selector::class) { registerProjectSubclasses() }
+        polymorphic(Selector::class) { registerSelectorSubclasses() }
+        polymorphic(Handler::class) { registerHandlerSubclasses() }
+        polymorphic(ExpirationStatus::class) { registerExpirationStatusSubclasses() }
+        */
+        polymorphic(Selector::class) {
+            subclass(Everyone.serializer())
+            subclass(SinglePlayer.serializer())
+            subclass(MultiplePlayers.serializer())
+            subclass(FirstJoinedAfter.serializer())
+            subclass(FirstJoinedBefore.serializer())
+        }
+        polymorphic(Handler::class) {
+            subclass(DebugMessage.serializer())
+        }
+        polymorphic(ExpirationStatus::class) {
+            subclass(ExpirationStatus.NeverExpire.serializer())
+            subclass(ExpirationStatus.ExpireAfterUse.serializer())
+            subclass(ExpirationStatus.ExpiresAt.serializer())
+            subclass(ExpirationStatus.Expired.serializer())
+            subclass(ExpirationStatus.Revoked.serializer())
+        }
     }
 }
 

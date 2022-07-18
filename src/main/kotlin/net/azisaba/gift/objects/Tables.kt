@@ -2,8 +2,13 @@ package net.azisaba.gift.objects
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
+import net.azisaba.gift.DatabaseManager
 import net.azisaba.gift.JSON
+import net.azisaba.gift.coroutines.letSuspend
+import net.azisaba.gift.serializers.UUIDSerializer
+import org.intellij.lang.annotations.Language
 import java.sql.ResultSet
+import java.util.UUID
 
 object CodesTable : Table<Codes>(Codes::class) {
     override val toValues: suspend (rs: ResultSet) -> Collection<Codes> = { rs ->
@@ -13,11 +18,76 @@ object CodesTable : Table<Codes>(Codes::class) {
                 rs.getLong("id"),
                 rs.getString("code"),
                 JSON.decodeFromString(rs.getString("selector")),
+                JSON.decodeFromString(rs.getString("handler")),
+                JSON.decodeFromString(rs.getString("data")),
             ))
         }
         values
     }
+
+    @Language("SQL")
+    val createTable = """
+        CREATE TABLE IF NOT EXISTS `codes` (
+            `id` BIGINT NOT NULL AUTO_INCREMENT,
+            `code` VARCHAR(255) NOT NULL UNIQUE,
+            `selector` MEDIUMTEXT NOT NULL,
+            `handler` LONGTEXT NOT NULL,
+            `data` MEDIUMTEXT NOT NULL,
+            PRIMARY KEY (id)
+        )
+    """.trimIndent()
 }
 
 @Serializable
-data class Codes(val id: Long, val code: String, val selector: Selector)
+data class Codes(
+    val id: Long,
+    val code: String,
+    val selector: Selector,
+    val handler: Handler,
+    val data: CodesData,
+) {
+    suspend fun isValid() =
+        when (data.expirationStatus) {
+            is ExpirationStatus.ExpireAfterUse -> data.expirationStatus.expireAfterUse < getCodeUses()
+            else -> data.expirationStatus.isValid()
+        }
+
+    suspend fun getCodeUses() =
+        DatabaseManager.executeQuery("SELECT COUNT(*) FROM `used_codes` WHERE `code` = ?").letSuspend { result ->
+            result.use { (rs) ->
+                if (!rs.next()) {
+                    return@letSuspend 0
+                }
+                return@letSuspend rs.getLong(1)
+            }
+        }
+}
+
+object UsedCodesTable : Table<UsedCodes>(UsedCodes::class) {
+    override val toValues: suspend (rs: ResultSet) -> Collection<UsedCodes> = { rs ->
+        val values = mutableListOf<UsedCodes>()
+        while (rs.next()) {
+            values.add(UsedCodes(
+                UUID.fromString(rs.getString("player")),
+                rs.getString("code"),
+            ))
+        }
+        values
+    }
+
+    @Language("SQL")
+    val createTable = """
+        CREATE TABLE IF NOT EXISTS `used_codes` (
+            `player` VARCHAR(36) NOT NULL,
+            `code` VARCHAR(255) NOT NULL,
+            PRIMARY KEY (player, code)
+        )
+    """.trimIndent()
+}
+
+@Serializable
+data class UsedCodes(
+    @Serializable(with = UUIDSerializer::class)
+    val player: UUID,
+    val code: String,
+)

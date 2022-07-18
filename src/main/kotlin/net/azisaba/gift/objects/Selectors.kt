@@ -13,6 +13,12 @@ interface Selector {
 }
 
 @Serializable
+@SerialName("everyone")
+object Everyone : Selector {
+    override suspend fun isSelected(player: UUID) = true
+}
+
+@Serializable
 @SerialName("single_player")
 data class SinglePlayer(@Contextual val player: UUID) : Selector {
     override suspend fun isSelected(player: UUID): Boolean = player == this.player
