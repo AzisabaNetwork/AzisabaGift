@@ -7,7 +7,11 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.modules.PolymorphicModuleBuilder
 import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.modules.subclass
+import net.azisaba.gift.objects.Selector
 import net.azisaba.gift.serializers.DynamicLookupSerializer
 import net.azisaba.gift.serializers.UUIDSerializer
 import java.util.UUID
@@ -17,6 +21,11 @@ val JSON = Json {
     serializersModule = SerializersModule {
         contextual(Any::class, DynamicLookupSerializer)
         contextual(UUID::class, UUIDSerializer)
+        fun PolymorphicModuleBuilder<Selector>.registerProjectSubclasses() {
+            subclass(Selector::class)
+        }
+        polymorphic(Any::class) { registerProjectSubclasses() }
+        polymorphic(Selector::class) { registerProjectSubclasses() }
     }
 }
 

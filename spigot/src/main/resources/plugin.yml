@@ -4,3 +4,5 @@ main: net.azisaba.gift.spigot.SpigotPlugin
 commands:
   promo:
     permission: azisabagift.command.promo
+  azisabagift:
+    permission: azisabagift.command.azisabagift

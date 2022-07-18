@@ -3,12 +3,14 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "1.7.10"
     kotlin("kapt") version "1.7.10"
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.7.10"
     id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
 subprojects {
     apply {
         plugin("kotlin")
+        plugin("org.jetbrains.kotlin.plugin.serialization")
         plugin("com.github.johnrengelman.shadow")
     }
 }
@@ -22,8 +24,12 @@ allprojects {
     }
 
     dependencies {
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.3.3")
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.3")
+        implementation("com.charleskorn.kaml:kaml:0.46.0") // YAML support for kotlinx.serialization
+        implementation("org.mariadb.jdbc:mariadb-java-client:3.0.6")
+        implementation("com.zaxxer:HikariCP:5.0.1")
         testImplementation(kotlin("test"))
     }
 
@@ -62,6 +68,9 @@ subprojects {
             relocate("kotlin", "net.azisaba.gift.lib.kotlin")
             relocate("org.jetbrains.annotations", "net.azisaba.gift.lib.org.jetbrains.annotations")
             relocate("org.intellij.lang.annotations", "net.azisaba.gift.lib.org.intellij.lang.annotations")
+            relocate("com.charleskorn.kaml", "net.azisaba.gift.lib.com.charleskorn.kaml")
+            relocate("com.zaxxer", "net.azisaba.gift.lib.com.zaxxer")
+            relocate("org.mariadb.jdbc", "net.azisaba.gift.lib.org.mariadb.jdbc")
 
             archiveFileName.set("${parent!!.name}-${project.name}-${project.version}.jar")
         }
