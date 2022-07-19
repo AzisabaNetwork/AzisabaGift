@@ -11,6 +11,7 @@ import net.azisaba.gift.objects.DebugMessage
 import net.azisaba.gift.objects.Everyone
 import net.azisaba.gift.objects.ExpirationStatus
 import net.azisaba.gift.objects.Handler
+import net.azisaba.gift.objects.HandlerList
 import net.azisaba.gift.objects.Selector
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -32,7 +33,7 @@ class AzisabaGiftCommand(private val logger: Logger) : AbstractCommand() {
         DatabaseManager.executeUpdate("INSERT INTO `codes` (`code`, `selector`, `handler`, `data`) VALUES (?, ?, ?, ?)",
             code,
             JSON.encodeToString<Selector>(Everyone),
-            JSON.encodeToString<Handler>(DebugMessage("Hello, world!")),
+            JSON.encodeToString(HandlerList(listOf(DebugMessage("Hello, world!")))),
             JSON.encodeToString(CodesData(ExpirationStatus.NeverExpire))
         ).close()
         source.sendMessage(Component.text("Generated new code: $code", NamedTextColor.GREEN))

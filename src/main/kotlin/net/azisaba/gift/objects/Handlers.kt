@@ -1,11 +1,30 @@
 package net.azisaba.gift.objects
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.descriptors.element
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import net.azisaba.gift.bridge.Platform
+import net.azisaba.gift.registry.Registry
+import net.azisaba.gift.registry.registerK
 import java.util.UUID
 
 interface Handler {
+    companion object {
+        init {
+            Registry.HANDLER.registerK(DebugMessage::class, DebugMessage.serializer())
+        }
+    }
+
     val isAvailableInVelocity: Boolean
     val isAvailableInSpigot: Boolean
 
@@ -25,5 +44,31 @@ data class DebugMessage(val message: String) : Handler {
     override suspend fun handle(uuid: UUID): Boolean {
         Platform.getPlayer(uuid)?.sendMessage(message) ?: return false
         return true
+    }
+}
+
+data class UnknownHandler(val json: JsonObject) : Handler {
+    override val isAvailableInSpigot = false
+    override val isAvailableInVelocity = false
+
+    override suspend fun handle(uuid: UUID): Boolean {
+        return false
+    }
+
+    object Serializer : KSerializer<UnknownHandler> {
+        override val descriptor: SerialDescriptor = buildClassSerialDescriptor("UnknownHandler") {
+            element<JsonElement>("json")
+        }
+
+        override fun deserialize(decoder: Decoder): UnknownHandler {
+            val jsonInput = decoder as? JsonDecoder ?: error("Can be deserialized only by JSON")
+            val json = jsonInput.decodeJsonElement().jsonObject
+            return UnknownHandler(JsonObject(json))
+        }
+
+        override fun serialize(encoder: Encoder, value: UnknownHandler) {
+            val jsonOutput = encoder as? JsonEncoder ?: error("Can be serialized only by JSON")
+            jsonOutput.encodeJsonElement(value.json)
+        }
     }
 }

@@ -5,7 +5,13 @@ import kotlinx.coroutines.runBlocking
 import net.azisaba.gift.DatabaseManager
 import net.azisaba.gift.config.PluginConfig
 import net.azisaba.gift.coroutines.MinecraftDispatcher
+import net.azisaba.gift.registry.Registry
+import net.azisaba.gift.registry.registerK
 import net.azisaba.gift.spigot.bridge.SpigotPlatform
+import net.azisaba.gift.spigot.commands.AzisabaGiftCommand
+import net.azisaba.gift.spigot.commands.PromoCommand
+import net.azisaba.gift.spigot.handlers.GiveItems
+import net.azisaba.gift.spigot.handlers.RunCommandOnServer
 import net.azisaba.gift.spigot.providers.SpigotDataProvider
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
@@ -18,12 +24,16 @@ class SpigotPlugin : JavaPlugin() {
         setupDispatcher()
         setupProvider()
         PluginConfig.loadConfig(dataFolder.toPath(), logger::info)
+        setupRegistry()
     }
 
     override fun onEnable() {
         runBlocking {
             DatabaseManager.init()
+            println("initialized")
         }
+        Bukkit.getPluginCommand("azisabagift")?.executor = AzisabaGiftCommand(logger)
+        Bukkit.getPluginCommand("promo")?.executor = PromoCommand(logger)
     }
 
     private fun setupDispatcher() {
@@ -35,5 +45,10 @@ class SpigotPlugin : JavaPlugin() {
 
     private fun setupProvider() {
         SpigotDataProvider
+    }
+
+    private fun setupRegistry() {
+        Registry.HANDLER.registerK(GiveItems::class, GiveItems.serializer())
+        Registry.HANDLER.registerK(RunCommandOnServer::class, RunCommandOnServer.serializer())
     }
 }

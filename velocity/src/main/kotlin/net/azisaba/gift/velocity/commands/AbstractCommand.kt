@@ -7,7 +7,10 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.velocitypowered.api.command.BrigadierCommand
 import com.velocitypowered.api.command.CommandSource
+import com.velocitypowered.api.proxy.Player
 import kotlinx.coroutines.runBlocking
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 
 abstract class AbstractCommand {
     companion object {

@@ -1,6 +1,5 @@
 package net.azisaba.gift.providers
 
-import net.azisaba.gift.config.PluginConfig
 import kotlin.reflect.KClass
 
 interface DataProvider

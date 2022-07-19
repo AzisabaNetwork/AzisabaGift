@@ -40,26 +40,3 @@ data class GiveItems(val items: List<String>) : Handler {
 }
 
 fun GiveItems(items: List<ItemStack>) = GiveItems(items.map { it.toByteArray().encodeToBase64String() })
-
-/**
- * Runs a command on server.
- * @param commandWithoutSlash The command without the slash. %player_uuid% and %player_name% can be used here.
- */
-@Serializable
-data class RunCommandOnServer(val commandWithoutSlash: String) : Handler {
-    override val isAvailableInVelocity = false
-    override val isAvailableInSpigot = true
-
-    override suspend fun handle(uuid: UUID): Boolean {
-        val player = Bukkit.getPlayer(uuid) ?: return false
-        withContext(MinecraftDispatcher.syncDispatcher) {
-            Bukkit.dispatchCommand(
-                player,
-                commandWithoutSlash
-                    .replace("%player_uuid%", uuid.toString())
-                    .replace("%player_name%", player.name),
-            )
-        }
-        return true
-    }
-}

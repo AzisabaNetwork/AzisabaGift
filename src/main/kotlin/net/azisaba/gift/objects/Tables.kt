@@ -43,7 +43,7 @@ data class Codes(
     val id: Long,
     val code: String,
     val selector: Selector,
-    val handler: Handler,
+    val handler: HandlerList,
     val data: CodesData,
 ) {
     suspend fun isValid() =

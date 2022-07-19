@@ -29,9 +29,11 @@ allprojects {
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.3")
         implementation("com.charleskorn.kaml:kaml:0.46.0") // YAML support for kotlinx.serialization
         implementation("org.mariadb.jdbc:mariadb-java-client:3.0.6")
-        implementation("com.zaxxer:HikariCP:5.0.1")
+        implementation("com.zaxxer:HikariCP:4.0.3") // For Java 8
         testImplementation(kotlin("test"))
     }
+
+    java.toolchain.languageVersion.set(JavaLanguageVersion.of(8))
 
     tasks {
         test {
@@ -45,6 +47,7 @@ allprojects {
 
                 val tokenReplacementMap = mapOf(
                     "name" to project.rootProject.name,
+                    "version" to project.rootProject.version,
                 )
 
                 filter<org.apache.tools.ant.filters.ReplaceTokens>("tokens" to tokenReplacementMap)

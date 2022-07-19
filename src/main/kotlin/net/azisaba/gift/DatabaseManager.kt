@@ -11,24 +11,32 @@ import java.sql.PreparedStatement
 
 object DatabaseManager {
     private val dataSource = PluginConfig.instance.databaseConfig.createDataSource()
+    var initialized = false
+        private set
 
     suspend fun init() {
+        if (initialized) error("Already initialized")
+        initialized = true
         executeUpdate(CodesTable.createTable).close()
         executeUpdate(UsedCodesTable.createTable).close()
     }
 
-    suspend fun executeQuery(@Language("SQL") sql: String, vararg args: Any) = execute(sql, *args, type = QueryType.QUERY)
+    suspend fun executeQuery(@Language("SQL") sql: String, vararg args: Any?) = execute(sql, *args, type = QueryType.QUERY)
 
-    suspend fun executeUpdate(@Language("SQL") sql: String, vararg args: Any) = execute(sql, *args, type = QueryType.UPDATE)
+    suspend fun executeUpdate(@Language("SQL") sql: String, vararg args: Any?) = execute(sql, *args, type = QueryType.UPDATE)
 
-    private suspend fun <T> execute(@Language("SQL") sql: String, vararg args: Any, type: QueryType<T>): CloseableResult<T> =
+    private suspend fun <T> execute(@Language("SQL") sql: String, vararg args: Any?, type: QueryType<T>): CloseableResult<T> =
         coroutineScope {
             withContext(MinecraftDispatcher.asyncDispatcher) {
-                val stmt = dataSource.connection.prepareStatement(sql)
+                val connection = dataSource.connection
+                val stmt = connection.prepareStatement(sql)
                 args.forEachIndexed { index, value ->
                     stmt.setObject(index + 1, value)
                 }
-                CloseableResult.of(type.getResult(stmt)) { stmt.close() }
+                CloseableResult.of(type.getResult(stmt)) {
+                    stmt.close()
+                    connection.close()
+                }
             }
         }
 }

@@ -6,9 +6,21 @@ import kotlinx.serialization.Serializable
 import net.azisaba.gift.config.PluginConfig
 import net.azisaba.gift.providers.DataProviders
 import net.azisaba.gift.providers.types.FirstJoinedTimeProvider
+import net.azisaba.gift.registry.Registry
+import net.azisaba.gift.registry.registerK
 import java.util.UUID
 
 interface Selector {
+    companion object {
+        init {
+            Registry.SELECTOR.registerK(Everyone::class, Everyone.serializer())
+            Registry.SELECTOR.registerK(SinglePlayer::class, SinglePlayer.serializer())
+            Registry.SELECTOR.registerK(MultiplePlayers::class, MultiplePlayers.serializer())
+            Registry.SELECTOR.registerK(FirstJoinedAfter::class, FirstJoinedAfter.serializer())
+            Registry.SELECTOR.registerK(FirstJoinedBefore::class, FirstJoinedBefore.serializer())
+        }
+    }
+
     suspend fun isSelected(player: UUID): Boolean
 }
 

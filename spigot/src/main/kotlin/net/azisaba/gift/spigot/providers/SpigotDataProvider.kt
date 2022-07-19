@@ -3,11 +3,16 @@ package net.azisaba.gift.spigot.providers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import net.azisaba.gift.coroutines.MinecraftDispatcher
+import net.azisaba.gift.providers.DataProviders
 import net.azisaba.gift.providers.types.FirstJoinedTimeProvider
 import org.bukkit.Bukkit
 import java.util.UUID
 
 object SpigotDataProvider : FirstJoinedTimeProvider {
+    init {
+        DataProviders.register(FirstJoinedTimeProvider::class, this)
+    }
+
     // TODO: Is #getPlayer and #getOfflinePlayer safe to use asynchronously?
     override suspend fun getFirstJoinedTime(uuid: UUID): Long =
         coroutineScope {

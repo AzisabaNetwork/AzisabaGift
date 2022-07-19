@@ -2,11 +2,20 @@ package net.azisaba.gift.objects
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
-@Serializable
-data class CodesData(val expirationStatus: ExpirationStatus)
+import net.azisaba.gift.registry.Registry
+import net.azisaba.gift.registry.registerK
 
 sealed interface ExpirationStatus {
+    companion object {
+        init {
+            Registry.EXPIRATION_STATUS.registerK(NeverExpire::class, NeverExpire.serializer())
+            Registry.EXPIRATION_STATUS.registerK(ExpireAfterUse::class, ExpireAfterUse.serializer())
+            Registry.EXPIRATION_STATUS.registerK(ExpiresAt::class, ExpiresAt.serializer())
+            Registry.EXPIRATION_STATUS.registerK(Expired::class, Expired.serializer())
+            Registry.EXPIRATION_STATUS.registerK(Revoked::class, Revoked.serializer())
+        }
+    }
+
     suspend fun isValid(): Boolean
 
     @SerialName("never_expire")

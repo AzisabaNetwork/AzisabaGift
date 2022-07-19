@@ -1,8 +1,9 @@
 package net.azisaba.gift.objects
 
 import kotlinx.serialization.InternalSerializationApi
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.serializer
 import kotlinx.serialization.serializerOrNull
 import net.azisaba.gift.DatabaseManager
 import net.azisaba.gift.JSON
@@ -55,6 +56,29 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
                 }
             }
 
+    suspend fun insert(tableName: String, value: T) {
+        val sqlValues = value.javaClass.constructors[0].parameters.joinToString(", ") { "?" }
+        val sqlActualValues =
+            value
+                .javaClass
+                .constructors[0]
+                .parameters
+                .map {
+                    val fieldValue = value.javaClass.fields.find { f -> f.name == it.name }!!.get(value)
+                    if (fieldValue == null) {
+                        null
+                    } else {
+                        it.toValue(fieldValue)
+                    }
+                }
+
+        DatabaseManager
+            .executeUpdate(
+                "INSERT INTO `$tableName` VALUES ($sqlValues)",
+                *sqlActualValues.toTypedArray(),
+            )
+    }
+
     @OptIn(InternalSerializationApi::class)
     private fun Parameter.extractValue(i: Int, rs: ResultSet): Any =
         when (type) {
@@ -67,15 +91,26 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
             Boolean::class.java -> rs.getBoolean(i)
             String::class.java -> rs.getString(i)
             else -> {
-                val annotation = type.getAnnotation(Serializable::class.java)
-                val serializer = annotation?.with?.serializerOrNull()// ?: type.kotlin.serializerOrNull()
-                if (serializer == null) {
-                    JSON.decodeFromString(rs.getString(1))
-                } else {
-                    //JSON.decodeFromString(serializer, rs.getString(i))
-                    JSON.decodeFromString(rs.getString(i))
+                type.kotlin.serializerOrNull().let {
+                    if (it == null) {
+                        JSON.decodeFromString(rs.getString(i))
+                    } else {
+                        JSON.decodeFromString(it, rs.getString(i))
+                    }
                 }
-                //throw IllegalArgumentException("Unsupported type: $type")
             }
+        }
+
+    private inline fun <reified T : Any> Parameter.toValue(value: T): Any =
+        when (type) {
+            Int::class.java -> value as Int
+            Float::class.java -> value as Float
+            Double::class.java -> value as Double
+            Long::class.java -> value as Long
+            Byte::class.java -> value as Byte
+            Short::class.java -> value as Short
+            Boolean::class.java -> value as Boolean
+            String::class.java -> value as String
+            else -> JSON.encodeToString(value)
         }
 }
