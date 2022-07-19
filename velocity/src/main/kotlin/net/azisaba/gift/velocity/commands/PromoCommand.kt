@@ -5,8 +5,8 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.velocitypowered.api.command.CommandSource
 import com.velocitypowered.api.proxy.Player
 import net.azisaba.gift.DatabaseManager
-import net.azisaba.gift.coroutines.letSuspend
 import net.azisaba.gift.objects.CodesTable
+import net.azisaba.gift.objects.UsedCodesTable
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.slf4j.Logger
@@ -24,7 +24,6 @@ class PromoCommand(private val logger: Logger) : AbstractCommand() {
                 .executesSuspend { executeWithCode(it.source as Player, StringArgumentType.getString(it, "code")) }
             )
 
-    // TODO: modify used_codes table and add `handled_velocity` and `handled_spigot` column
     private suspend fun executeWithCode(player: Player, code: String): Int {
         if (executing.contains(player.uniqueId)) {
             return 0
@@ -39,26 +38,38 @@ class PromoCommand(private val logger: Logger) : AbstractCommand() {
                 return 0
             }
             // check if player has already used this code
-            val used = DatabaseManager.executeQuery(
-                "SELECT `player` FROM `used_codes` WHERE `code` = ? AND `player` = ?",
-                code,
+            val used = UsedCodesTable.select(
+                "SELECT * FROM `used_codes` WHERE `player` = ? AND `code` = ?",
                 player.uniqueId.toString(),
-            ).letSuspend { result -> result.use { (rs) -> rs.next() } }
-            if (used) {
+                code,
+            ).firstOrNull()
+            if (used?.handled_spigot == false) { // used_codes exists AND not handled by spigot
+                player.spoofChatInput("/promo $code")
+            }
+            if (used != null && used.handled_velocity) {
                 logger.info("${player.username} (${player.uniqueId}) is trying to use code '$code' but it has already been used")
-                player.sendMessage(Component.text("このコードはすでに使用済みです。", NamedTextColor.RED))
+                player.sendMessage(Component.text("[V] このコードはすでに使用済みです。", NamedTextColor.RED))
                 return 0
             }
             logger.info("Code ($code) is valid, sending gift to ${player.username} (${player.uniqueId})...")
             // mark as used
             DatabaseManager.executeUpdate(
-                "INSERT INTO `used_codes` (`player`, `code`) VALUES (?, ?)",
+                "INSERT INTO `used_codes` (`player`, `code`, `handled_velocity`) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE `handled_velocity` = 1",
                 player.uniqueId.toString(),
                 code,
             ).close()
+            if (used == null) {
+                player.spoofChatInput("/promo $code")
+            }
             logger.info("Added used_codes record for player: ${player.username} (${player.uniqueId}), code: $code")
             try {
-                codes.handler.handle(player.uniqueId) { it.isAvailableInVelocity }
+                codes.handler.handle(player.uniqueId) {
+                    if (it.isAvailableInSpigot && it.isAvailableInVelocity) {
+                        used?.handled_spigot != true
+                    } else {
+                        it.isAvailableInVelocity
+                    }
+                }
             } catch (e: Throwable) {
                 logger.error("Caught exception while handling code '$code' (Code ID: ${codes.id})", e)
                 logger.warn("Failed to redeem code '$code' to ${player.username} (${player.uniqueId}) due to an error")

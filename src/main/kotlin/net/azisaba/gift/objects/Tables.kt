@@ -70,6 +70,8 @@ object UsedCodesTable : Table<UsedCodes>(UsedCodes::class) {
             values.add(UsedCodes(
                 UUID.fromString(rs.getString("player")),
                 rs.getString("code"),
+                rs.getBoolean("handled_velocity"),
+                rs.getBoolean("handled_spigot"),
             ))
         }
         values
@@ -80,6 +82,8 @@ object UsedCodesTable : Table<UsedCodes>(UsedCodes::class) {
         CREATE TABLE IF NOT EXISTS `used_codes` (
             `player` VARCHAR(36) NOT NULL,
             `code` VARCHAR(255) NOT NULL,
+            `handled_velocity` TINYINT(1) NOT NULL DEFAULT 0,
+            `handled_spigot` TINYINT(1) NOT NULL DEFAULT 0,
             PRIMARY KEY (player, code)
         )
     """.trimIndent()
@@ -90,4 +94,6 @@ data class UsedCodes(
     @Serializable(with = UUIDSerializer::class)
     val player: UUID,
     val code: String,
+    val handled_velocity: Boolean,
+    val handled_spigot: Boolean,
 )

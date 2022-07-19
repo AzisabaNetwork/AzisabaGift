@@ -67,7 +67,7 @@ class AzisabaGiftCommand(private val logger: Logger) : TabExecutor {
                 }
                 JSON.decodeFromString(serializer, args.drop(1).joinToString(" "))
             }
-            val newData = codes.data.swapExpirationStatus(expirationStatus)
+            val newData = codes.data.copy(expirationStatus = expirationStatus)
             DatabaseManager.executeUpdate("UPDATE `codes` SET `data` = ? WHERE `code` = ?", newData, code).close()
             sender.sendMessage("${ChatColor.GREEN}コードの有効期限を${expirationStatus}に変更しました。")
         } else {

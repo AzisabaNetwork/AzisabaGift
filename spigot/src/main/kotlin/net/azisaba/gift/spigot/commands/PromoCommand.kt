@@ -3,8 +3,8 @@ package net.azisaba.gift.spigot.commands
 import kotlinx.coroutines.asExecutor
 import net.azisaba.gift.DatabaseManager
 import net.azisaba.gift.coroutines.MinecraftDispatcher
-import net.azisaba.gift.coroutines.letSuspend
 import net.azisaba.gift.objects.CodesTable
+import net.azisaba.gift.objects.UsedCodesTable
 import net.azisaba.gift.util.executeAsync
 import org.bukkit.ChatColor
 import org.bukkit.command.Command
@@ -50,26 +50,32 @@ class PromoCommand(private val logger: Logger) : TabExecutor {
                     return@executeAsync
                 }
                 // check if player has already used this code
-                val used = DatabaseManager.executeQuery(
-                    "SELECT `player` FROM `used_codes` WHERE `code` = ? AND `sender` = ?",
-                    code,
+                val used = UsedCodesTable.select(
+                    "SELECT * FROM `used_codes` WHERE `player` = ? AND `code` = ?",
                     sender.uniqueId.toString(),
-                ).letSuspend { result -> result.use { (rs) -> rs.next() } }
-                if (used) {
+                    code,
+                ).firstOrNull()
+                if (used != null && used.handled_spigot) {
                     logger.info("${sender.name} (${sender.uniqueId}) is trying to use code '$code' but it has already been used")
-                    sender.sendMessage("${ChatColor.RED}このコードはすでに使用済みです。")
+                    sender.sendMessage("${ChatColor.RED}[S] このコードはすでに使用済みです。")
                     return@executeAsync
                 }
                 logger.info("Code ($code) is valid, sending gift to ${sender.name} (${sender.uniqueId})...")
                 // mark as used
                 DatabaseManager.executeUpdate(
-                    "INSERT INTO `used_codes` (`player`, `code`) VALUES (?, ?)",
+                    "INSERT INTO `used_codes` (`player`, `code`, `handled_spigot`) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE `handled_spigot` = 1",
                     sender.uniqueId.toString(),
                     code,
                 ).close()
                 logger.info("Added used_codes record for player: ${sender.name} (${sender.uniqueId}), code: $code")
                 try {
-                    codes.handler.handle(sender.uniqueId) { it.isAvailableInSpigot }
+                    codes.handler.handle(sender.uniqueId) {
+                        if (it.isAvailableInSpigot && it.isAvailableInVelocity) {
+                            used?.handled_velocity != true
+                        } else {
+                            it.isAvailableInSpigot
+                        }
+                    }
                 } catch (e: Throwable) {
                     logger.severe("Caught exception while handling code '$code' (Code ID: ${codes.id})")
                     e.printStackTrace()
