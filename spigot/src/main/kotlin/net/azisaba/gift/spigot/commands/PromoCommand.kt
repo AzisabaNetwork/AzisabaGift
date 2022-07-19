@@ -44,7 +44,7 @@ class PromoCommand(private val logger: Logger) : TabExecutor {
             try {
                 logger.info("${sender.name} (${sender.uniqueId}) is trying to use code '$code'")
                 // check if code exists and is valid
-                val codes = CodesTable.find("SELECT * FROM `codes` WHERE `code` = ?", code).firstOrNull()
+                val codes = CodesTable.select("SELECT * FROM `codes` WHERE `code` = ?", code).firstOrNull()
                 if (codes == null || !codes.isValid()) {
                     sender.sendMessage("${ChatColor.RED}このコードは無効か、すでに期限切れです。")
                     return@executeAsync

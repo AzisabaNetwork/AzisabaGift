@@ -3,7 +3,6 @@ package net.azisaba.gift.objects
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.serializer
 import kotlinx.serialization.serializerOrNull
 import net.azisaba.gift.DatabaseManager
 import net.azisaba.gift.JSON
@@ -11,6 +10,7 @@ import net.azisaba.gift.coroutines.letSuspend
 import org.intellij.lang.annotations.Language
 import java.lang.reflect.Parameter
 import java.sql.ResultSet
+import java.util.UUID
 import kotlin.reflect.KClass
 
 abstract class Table<T : Any>(clazz: KClass<T>) {
@@ -41,11 +41,18 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
             .letSuspend { result ->
                 result.use { (rs) ->
                     val values = mutableListOf<T>()
-                    val ctr = clazz.constructors.first()
+                    val ctr = clazz.constructors.last()
                     while (rs.next()) {
                         val ctrArgs = mutableListOf<Any>()
                         ctr.parameters.forEachIndexed { index, param ->
-                            ctrArgs.add(param.extractValue(index + 1, rs))
+                            try {
+                                ctrArgs.add(param.extractValue(index + 1, rs))
+                            } catch (e: Exception) {
+                                // TODO: use proper logger
+                                System.err.println("Failed to extract value from column ${index + 1}")
+                                e.printStackTrace()
+                                throw e
+                            }
                         }
                         ctr.newInstance(*ctrArgs.toTypedArray()).apply {
                             @Suppress("UNCHECKED_CAST")
@@ -61,7 +68,8 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
         val sqlActualValues =
             value
                 .javaClass
-                .constructors[0]
+                .constructors
+                .last()
                 .parameters
                 .map {
                     val fieldValue = value.javaClass.fields.find { f -> f.name == it.name }!!.get(value)
@@ -90,6 +98,7 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
             Short::class.java -> rs.getShort(i)
             Boolean::class.java -> rs.getBoolean(i)
             String::class.java -> rs.getString(i)
+            UUID::class.java -> UUID.fromString(rs.getString(i))
             else -> {
                 type.kotlin.serializerOrNull().let {
                     if (it == null) {

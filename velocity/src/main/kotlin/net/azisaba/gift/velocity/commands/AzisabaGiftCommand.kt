@@ -30,6 +30,13 @@ class AzisabaGiftCommand(private val logger: Logger) : AbstractCommand() {
                         .then(literal("append")
                             .then(argument("handler_type", StringArgumentType.string())
                                 .suggests(Registry.HANDLER.getValues().map { it.descriptor.serialName })
+                                .executesSuspend {
+                                    Modify.Handlers.append(
+                                        it.source,
+                                        StringArgumentType.getString(it, "code"),
+                                        StringArgumentType.getString(it, "handler_type"),
+                                    )
+                                }
                                 .then(argument("data", StringArgumentType.greedyString())
                                     .executesSuspend {
                                         Modify.Handlers.append(

@@ -74,6 +74,8 @@ subprojects {
             relocate("com.charleskorn.kaml", "net.azisaba.gift.lib.com.charleskorn.kaml")
             relocate("com.zaxxer", "net.azisaba.gift.lib.com.zaxxer")
             relocate("org.mariadb.jdbc", "net.azisaba.gift.lib.org.mariadb.jdbc")
+            relocate("org.slf4j", "net.azisaba.gift.lib.org.slf4j")
+            relocate("org.snakeyaml", "net.azisaba.gift.lib.org.snakeyaml")
 
             archiveFileName.set("${parent!!.name}-${project.name}-${project.version}.jar")
         }

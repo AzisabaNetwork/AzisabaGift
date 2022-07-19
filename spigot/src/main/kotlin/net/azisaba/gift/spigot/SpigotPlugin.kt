@@ -16,12 +16,13 @@ import net.azisaba.gift.spigot.providers.SpigotDataProvider
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicInteger
 
 @Suppress("unused")
 class SpigotPlugin : JavaPlugin() {
     override fun onLoad() {
         SpigotPlatform
-        setupDispatcher()
+        setupFakeDispatcher()
         setupProvider()
         PluginConfig.loadConfig(dataFolder.toPath(), logger::info)
         setupRegistry()
@@ -30,10 +31,18 @@ class SpigotPlugin : JavaPlugin() {
     override fun onEnable() {
         runBlocking {
             DatabaseManager.init()
-            println("initialized")
         }
         Bukkit.getPluginCommand("azisabagift")?.executor = AzisabaGiftCommand(logger)
         Bukkit.getPluginCommand("promo")?.executor = PromoCommand(logger)
+        setupDispatcher()
+    }
+
+    private fun setupFakeDispatcher() {
+        val count = AtomicInteger()
+        MinecraftDispatcher.syncDispatcher =
+            Executor { error("Cannot use syncDispatcher") }.asCoroutineDispatcher()
+        MinecraftDispatcher.asyncDispatcher =
+            Executor { Thread(it, "AzisabaGift-coroutines-#${count.getAndIncrement()}").start() }.asCoroutineDispatcher()
     }
 
     private fun setupDispatcher() {

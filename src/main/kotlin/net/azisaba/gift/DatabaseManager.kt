@@ -1,6 +1,5 @@
 package net.azisaba.gift
 
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import net.azisaba.gift.config.PluginConfig
 import net.azisaba.gift.coroutines.MinecraftDispatcher
@@ -21,22 +20,26 @@ object DatabaseManager {
         executeUpdate(UsedCodesTable.createTable).close()
     }
 
-    suspend fun executeQuery(@Language("SQL") sql: String, vararg args: Any?) = execute(sql, *args, type = QueryType.QUERY)
+    suspend fun executeQuery(@Language("SQL") sql: String, vararg args: Any?) =
+        execute(sql, *args, type = QueryType.QUERY)
 
-    suspend fun executeUpdate(@Language("SQL") sql: String, vararg args: Any?) = execute(sql, *args, type = QueryType.UPDATE)
+    suspend fun executeUpdate(@Language("SQL") sql: String, vararg args: Any?) =
+        execute(sql, *args, type = QueryType.UPDATE)
 
-    private suspend fun <T> execute(@Language("SQL") sql: String, vararg args: Any?, type: QueryType<T>): CloseableResult<T> =
-        coroutineScope {
-            withContext(MinecraftDispatcher.asyncDispatcher) {
-                val connection = dataSource.connection
-                val stmt = connection.prepareStatement(sql)
-                args.forEachIndexed { index, value ->
-                    stmt.setObject(index + 1, value)
-                }
-                CloseableResult.of(type.getResult(stmt)) {
-                    stmt.close()
-                    connection.close()
-                }
+    private suspend fun <T> execute(
+        @Language("SQL") sql: String,
+        vararg args: Any?,
+        type: QueryType<T>,
+    ): CloseableResult<T> =
+        withContext(MinecraftDispatcher.asyncDispatcher) {
+            val connection = dataSource.connection
+            val stmt = connection.prepareStatement(sql)
+            args.forEachIndexed { index, value ->
+                stmt.setObject(index + 1, value)
+            }
+            CloseableResult.of(type.getResult(stmt)) {
+                stmt.close()
+                connection.close()
             }
         }
 }
