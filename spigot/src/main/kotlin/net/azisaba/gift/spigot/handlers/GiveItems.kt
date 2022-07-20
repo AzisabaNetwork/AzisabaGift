@@ -17,7 +17,7 @@ import java.util.UUID
 
 @SerialName("give_items")
 @Serializable
-data class GiveItems(val items: List<String>) : Handler {
+data class GiveItems(val items: List<String> = emptyList()) : Handler {
     override fun isAvailableInVelocity(): Boolean = false
     override fun isAvailableInSpigot(): Boolean = true
 

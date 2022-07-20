@@ -40,8 +40,10 @@ class SpigotPlugin : JavaPlugin() {
         runBlocking {
             DatabaseManager.init()
         }
-        Bukkit.getPluginCommand("azisabagift")?.executor = AzisabaGiftCommand(logger)
-        Bukkit.getPluginCommand("promo")?.executor = PromoCommand(logger)
+        Bukkit.getScheduler().runTaskLater(this, {
+            Bukkit.getPluginCommand("azisabagift")?.executor = AzisabaGiftCommand()
+            Bukkit.getPluginCommand("promo")?.executor = PromoCommand(logger)
+        }, 1)
         setupDispatcher()
     }
 

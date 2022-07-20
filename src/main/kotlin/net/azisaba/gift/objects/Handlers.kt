@@ -22,6 +22,7 @@ interface Handler {
     companion object {
         init {
             Registry.HANDLER.registerK(DebugMessage::class, DebugMessage.serializer())
+            Registry.HANDLER.registerK(UnknownHandler::class, UnknownHandler.Serializer)
         }
     }
 
