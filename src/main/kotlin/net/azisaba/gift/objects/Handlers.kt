@@ -25,8 +25,9 @@ interface Handler {
         }
     }
 
-    val isAvailableInVelocity: Boolean
-    val isAvailableInSpigot: Boolean
+    fun isAvailableInVelocity(): Boolean
+
+    fun isAvailableInSpigot(): Boolean
 
     /**
      * @param uuid UUID of the player
@@ -38,8 +39,8 @@ interface Handler {
 @SerialName("debug_message")
 @Serializable
 data class DebugMessage(val message: String) : Handler {
-    override val isAvailableInSpigot = true
-    override val isAvailableInVelocity = true
+    override fun isAvailableInVelocity(): Boolean = true
+    override fun isAvailableInSpigot(): Boolean = true
 
     override suspend fun handle(uuid: UUID): Boolean {
         Platform.getPlayer(uuid)?.sendMessage(message) ?: return false
@@ -48,8 +49,8 @@ data class DebugMessage(val message: String) : Handler {
 }
 
 data class UnknownHandler(val json: JsonObject) : Handler {
-    override val isAvailableInSpigot = false
-    override val isAvailableInVelocity = false
+    override fun isAvailableInVelocity(): Boolean = false
+    override fun isAvailableInSpigot(): Boolean = false
 
     override suspend fun handle(uuid: UUID): Boolean {
         return false

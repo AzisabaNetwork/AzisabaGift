@@ -13,7 +13,9 @@ import java.util.UUID
 interface Selector {
     companion object {
         init {
+            // Make sure to register serializer when you create a new selector, or you will not be able to (de)serialize it.
             Registry.SELECTOR.registerK(Everyone::class, Everyone.serializer())
+            Registry.SELECTOR.registerK(Nobody::class, Nobody.serializer())
             Registry.SELECTOR.registerK(SinglePlayer::class, SinglePlayer.serializer())
             Registry.SELECTOR.registerK(MultiplePlayers::class, MultiplePlayers.serializer())
             Registry.SELECTOR.registerK(FirstJoinedAfter::class, FirstJoinedAfter.serializer())
@@ -28,6 +30,12 @@ interface Selector {
 @SerialName("everyone")
 object Everyone : Selector {
     override suspend fun isSelected(player: UUID) = true
+}
+
+@Serializable
+@SerialName("nobody")
+object Nobody : Selector {
+    override suspend fun isSelected(player: UUID): Boolean = false
 }
 
 @Serializable

@@ -25,6 +25,8 @@ val JSON = Json {
         error("Attempted to initialize JSON too early")
     }
 
+    encodeDefaults = true
+
     serializersModule = SerializersModule {
         contextual(Any::class, DynamicLookupSerializer)
         contextual(UUID::class, UUIDSerializer)

@@ -18,8 +18,8 @@ import java.util.UUID
 @SerialName("give_items")
 @Serializable
 data class GiveItems(val items: List<String>) : Handler {
-    override val isAvailableInVelocity = false
-    override val isAvailableInSpigot = true
+    override fun isAvailableInVelocity(): Boolean = false
+    override fun isAvailableInSpigot(): Boolean = true
 
     override suspend fun handle(uuid: UUID): Boolean {
         val player = Bukkit.getPlayer(uuid) ?: return false

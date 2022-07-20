@@ -15,7 +15,6 @@ import net.azisaba.gift.registry.Registry
 import net.azisaba.gift.velocity.bridge.VelocityPlatform
 import net.azisaba.gift.velocity.commands.AzisabaGiftCommand
 import net.azisaba.gift.velocity.commands.PromoCommand
-import net.azisaba.gift.velocity.listeners.PromoCommandForwarder
 import net.azisaba.gift.velocity.providers.SpicyAzisaBanDataProvider
 import org.slf4j.Logger
 import java.nio.file.Path
@@ -52,8 +51,7 @@ class VelocityPlugin @Inject constructor(
         runBlocking {
             DatabaseManager.init()
         }
-        //server.eventManager.register(this, PromoCommandForwarder)
-        server.commandManager.register(AzisabaGiftCommand(logger).createCommand())
+        server.commandManager.register(AzisabaGiftCommand.createCommand())
         server.commandManager.register(PromoCommand(logger).createCommand())
     }
 }

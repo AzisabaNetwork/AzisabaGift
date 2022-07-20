@@ -6,7 +6,9 @@ import java.util.UUID
 
 @SerialName("handler_list")
 @Serializable
-data class HandlerList(val handlers: List<Handler>) {
+data class HandlerList(
+    val handlers: List<Handler> = emptyList(),
+) {
     /**
      * Attempts to invoke all handlers.
      * @throws IllegalStateException if any handler throws an exception or returns false

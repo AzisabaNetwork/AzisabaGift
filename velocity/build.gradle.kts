@@ -17,3 +17,10 @@ dependencies {
     compileOnly("xyz.acrylicstyle.util:promise:0.16.6")
     compileOnly("xyz.acrylicstyle:minecraft-util:1.1.0")
 }
+
+tasks {
+    shadowJar {
+        relocate("util", "net.azisaba.spicyAzisaBan.libs.util") // java-util from spicyazisaban
+        relocate("xyz.acrylicstyle.mcutil", "net.azisaba.spicyAzisaBan.libs.xyz.acrylicstyle.mcutil")
+    }
+}

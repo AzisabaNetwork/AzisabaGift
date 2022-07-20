@@ -33,7 +33,11 @@ class PromoCommand(private val logger: Logger) : AbstractCommand() {
             logger.info("${player.username} (${player.uniqueId}) is trying to use code '$code'")
             // check if code exists and is valid
             val codes = CodesTable.select("SELECT * FROM `codes` WHERE `code` = ?", code).firstOrNull()
-            if (codes == null || !codes.isValid()) {
+            if (codes == null ||
+                !codes.isValid() ||
+                !codes.selector.isSelected(player.uniqueId) ||
+                !codes.data.isServerAllowed(player.currentServer.get().serverInfo.name)
+            ) {
                 player.sendMessage(Component.text("このコードは無効か、すでに期限切れです。", NamedTextColor.RED))
                 return 0
             }
@@ -64,10 +68,10 @@ class PromoCommand(private val logger: Logger) : AbstractCommand() {
             logger.info("Added used_codes record for player: ${player.username} (${player.uniqueId}), code: $code")
             try {
                 codes.handler.handle(player.uniqueId) {
-                    if (it.isAvailableInSpigot && it.isAvailableInVelocity) {
+                    if (it.isAvailableInSpigot() && it.isAvailableInVelocity()) {
                         used?.handled_spigot != true
                     } else {
-                        it.isAvailableInVelocity
+                        it.isAvailableInVelocity()
                     }
                 }
             } catch (e: Throwable) {

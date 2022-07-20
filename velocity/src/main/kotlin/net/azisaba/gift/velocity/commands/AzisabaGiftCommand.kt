@@ -1,37 +1,164 @@
 package net.azisaba.gift.velocity.commands
 
+import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.velocitypowered.api.command.CommandSource
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.encodeToString
-import net.azisaba.gift.DatabaseManager
-import net.azisaba.gift.JSON
-import net.azisaba.gift.objects.CodesData
-import net.azisaba.gift.objects.CodesTable
-import net.azisaba.gift.objects.DebugMessage
-import net.azisaba.gift.objects.Everyone
-import net.azisaba.gift.objects.ExpirationStatus
-import net.azisaba.gift.objects.HandlerList
-import net.azisaba.gift.objects.Selector
 import net.azisaba.gift.registry.Registry
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
-import org.slf4j.Logger
 
-class AzisabaGiftCommand(private val logger: Logger) : AbstractCommand() {
+object AzisabaGiftCommand : AbstractCommand() {
     @OptIn(ExperimentalSerializationApi::class)
     override fun createBuilder(): LiteralArgumentBuilder<CommandSource> =
         literal("vazisabagift") // note that there is "v" here
             .requires { it.hasPermission("azisabagift.command.vazisabagift") }
-            .then(literal("modify")
+            .then(literal("createcode")
+                .requires { it.hasPermission("azisabagift.createcode") }
                 .then(argument("code", StringArgumentType.string())
+                    .executesSuspend {
+                        AzisabaGiftCommandImpl.createCode(it.source, StringArgumentType.getString(it, "code"))
+                    }
+                )
+            )
+            .then(literal("code")
+                .requires { it.hasPermission("azisabagift.code") }
+                .then(argument("code", StringArgumentType.string())
+                    .then(literal("info")
+                        .requires { it.hasPermission("azisabagift.code.info") }
+                        .executesSuspend {
+                            AzisabaGiftCommandImpl.Code.info(
+                                it.source,
+                                StringArgumentType.getString(it, "code"),
+                            )
+                        }
+                    )
+                    .then(literal("set")
+                        .requires { it.hasPermission("azisabagift.code.set") }
+                        .then(literal("selector")
+                            .requires { it.hasPermission("azisabagift.code.set.selector") }
+                            .then(argument("type", StringArgumentType.string())
+                                .suggests { _, builder -> builder.suggest(Registry.SELECTOR.getValues().map { it.descriptor.serialName }) }
+                                .executesSuspend {
+                                    AzisabaGiftCommandImpl.Code.Set.setSelector(
+                                        it.source,
+                                        StringArgumentType.getString(it, "code"),
+                                        StringArgumentType.getString(it, "type"),
+                                    )
+                                }
+                                .then(argument("data", StringArgumentType.greedyString())
+                                    .executesSuspend {
+                                        AzisabaGiftCommandImpl.Code.Set.setSelector(
+                                            it.source,
+                                            StringArgumentType.getString(it, "code"),
+                                            StringArgumentType.getString(it, "type"),
+                                            StringArgumentType.getString(it, "data"),
+                                        )
+                                    }
+                                )
+                            )
+                        )
+                        .then(literal("expirationstatus")
+                            .requires { it.hasPermission("azisabagift.code.set.expirationstatus") }
+                            .then(argument("type", StringArgumentType.string())
+                                .suggests { _, builder -> builder.suggest(Registry.EXPIRATION_STATUS.getValues().map { it.descriptor.serialName }) }
+                                .executesSuspend {
+                                    AzisabaGiftCommandImpl.Code.Set.setExpirationStatus(
+                                        it.source,
+                                        StringArgumentType.getString(it, "code"),
+                                        StringArgumentType.getString(it, "type"),
+                                    )
+                                }
+                                .then(argument("data", StringArgumentType.greedyString())
+                                    .executesSuspend {
+                                        AzisabaGiftCommandImpl.Code.Set.setExpirationStatus(
+                                            it.source,
+                                            StringArgumentType.getString(it, "code"),
+                                            StringArgumentType.getString(it, "type"),
+                                            StringArgumentType.getString(it, "data"),
+                                        )
+                                    }
+                                )
+                            )
+                        )
+                        .then(literal("allowedserver")
+                            .requires { it.hasPermission("azisabagift.code.set.allowedserver") }
+                            .then(argument("pattern", StringArgumentType.greedyString())
+                                .suggests { _, builder -> builder.suggest(listOf(".*")) }
+                                .executesSuspend {
+                                    AzisabaGiftCommandImpl.Code.Set.setAllowedServer(
+                                        it.source,
+                                        StringArgumentType.getString(it, "code"),
+                                        StringArgumentType.getString(it, "pattern"),
+                                    )
+                                }
+                            )
+                        )
+                    )
                     .then(literal("handlers")
+                        .requires { it.hasPermission("azisabagift.code.handlers") }
+                        .then(literal("info")
+                            .requires { it.hasPermission("azisabagift.code.handlers.info") }
+                            .executesSuspend {
+                                AzisabaGiftCommandImpl.Code.Handlers.info(
+                                    it.source,
+                                    StringArgumentType.getString(it, "code"),
+                                )
+                            }
+                        )
+                        .then(literal("clear")
+                            .requires { it.hasPermission("azisabagift.code.handlers.clear") }
+                            .executesSuspend {
+                                AzisabaGiftCommandImpl.Code.Handlers.clear(
+                                    it.source,
+                                    StringArgumentType.getString(it, "code"),
+                                )
+                            }
+                        )
+                        .then(literal("remove")
+                            .requires { it.hasPermission("azisabagift.code.handlers.remove") }
+                            .then(argument("position-from-1", IntegerArgumentType.integer(1))
+                                .executesSuspend {
+                                    AzisabaGiftCommandImpl.Code.Handlers.remove(
+                                        it.source,
+                                        StringArgumentType.getString(it, "code"),
+                                        IntegerArgumentType.getInteger(it, "position-from-1")
+                                    )
+                                }
+                            )
+                        )
+                        .then(literal("insert")
+                            .requires { it.hasPermission("azisabagift.code.handlers.insert") }
+                            .then(argument("position-from-1", IntegerArgumentType.integer(1))
+                                .then(argument("handler_type", StringArgumentType.string())
+                                    .suggests(Registry.HANDLER.getValues().map { it.descriptor.serialName })
+                                    .executesSuspend {
+                                        AzisabaGiftCommandImpl.Code.Handlers.insert(
+                                            it.source,
+                                            StringArgumentType.getString(it, "code"),
+                                            IntegerArgumentType.getInteger(it, "position-from-1"),
+                                            StringArgumentType.getString(it, "handler_type"),
+                                        )
+                                    }
+                                    .then(argument("data", StringArgumentType.greedyString())
+                                        .executesSuspend {
+                                            AzisabaGiftCommandImpl.Code.Handlers.insert(
+                                                it.source,
+                                                StringArgumentType.getString(it, "code"),
+                                                IntegerArgumentType.getInteger(it, "position-from-1"),
+                                                StringArgumentType.getString(it, "handler_type"),
+                                                StringArgumentType.getString(it, "data"),
+                                            )
+                                        }
+                                    )
+                                )
+                            )
+                        )
                         .then(literal("append")
+                            .requires { it.hasPermission("azisabagift.code.handlers.append") }
                             .then(argument("handler_type", StringArgumentType.string())
                                 .suggests(Registry.HANDLER.getValues().map { it.descriptor.serialName })
                                 .executesSuspend {
-                                    Modify.Handlers.append(
+                                    AzisabaGiftCommandImpl.Code.Handlers.append(
                                         it.source,
                                         StringArgumentType.getString(it, "code"),
                                         StringArgumentType.getString(it, "handler_type"),
@@ -39,7 +166,7 @@ class AzisabaGiftCommand(private val logger: Logger) : AbstractCommand() {
                                 }
                                 .then(argument("data", StringArgumentType.greedyString())
                                     .executesSuspend {
-                                        Modify.Handlers.append(
+                                        AzisabaGiftCommandImpl.Code.Handlers.append(
                                             it.source,
                                             StringArgumentType.getString(it, "code"),
                                             StringArgumentType.getString(it, "handler_type"),
@@ -55,47 +182,13 @@ class AzisabaGiftCommand(private val logger: Logger) : AbstractCommand() {
             .then(literal("debug")
                 .then(literal("generate")
                     .then(argument("code", StringArgumentType.greedyString())
-                        .executesSuspend { debugGenerate(it.source, StringArgumentType.getString(it, "code")) }
+                        .executesSuspend {
+                            AzisabaGiftCommandImpl.debugGenerate(
+                                it.source,
+                                StringArgumentType.getString(it, "code"),
+                            )
+                        }
                     )
                 )
             )
-
-    internal object Modify {
-        internal object Handlers {
-            @OptIn(ExperimentalSerializationApi::class)
-            suspend fun append(source: CommandSource, code: String, handlerType: String, data: String = "{}"): Int {
-                val codes = CodesTable.select("SELECT * FROM `codes` WHERE `code` = ?", code).firstOrNull()
-                if (codes == null) {
-                    source.sendMessage(Component.text("コードが見つかりません。", NamedTextColor.RED))
-                    return 0
-                }
-                val serializer =
-                    Registry.HANDLER
-                        .getReadonlyMap()
-                        .entries
-                        .find { (_, serializer) -> serializer.descriptor.serialName == handlerType }
-                        ?.value
-                if (serializer == null) {
-                    source.sendMessage(Component.text("Handlerが見つかりません。", NamedTextColor.RED))
-                    return 0
-                }
-                val handler = JSON.decodeFromString(serializer, data)
-                val newHandlerList = codes.handler.copy(handlers = codes.handler.handlers + handler)
-                DatabaseManager.executeUpdate("UPDATE `codes` SET `handler` = ? WHERE `code` = ?", JSON.encodeToString(newHandlerList), code).close()
-                source.sendMessage(Component.text("${handler}を追加しました。", NamedTextColor.GREEN))
-                return 0
-            }
-        }
-    }
-
-    private suspend fun debugGenerate(source: CommandSource, code: String): Int {
-        DatabaseManager.executeUpdate("INSERT INTO `codes` (`code`, `selector`, `handler`, `data`) VALUES (?, ?, ?, ?)",
-            code,
-            JSON.encodeToString<Selector>(Everyone),
-            JSON.encodeToString(HandlerList(listOf(DebugMessage("Hello, world!")))),
-            JSON.encodeToString(CodesData(ExpirationStatus.NeverExpire))
-        ).close()
-        source.sendMessage(Component.text("Generated new code: $code", NamedTextColor.GREEN))
-        return 0
-    }
 }

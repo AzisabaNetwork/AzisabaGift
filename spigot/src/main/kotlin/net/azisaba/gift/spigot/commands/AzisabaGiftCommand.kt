@@ -2,12 +2,14 @@ package net.azisaba.gift.spigot.commands
 
 import kotlinx.coroutines.asExecutor
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.encodeToString
 import net.azisaba.gift.DatabaseManager
 import net.azisaba.gift.JSON
 import net.azisaba.gift.coroutines.MinecraftDispatcher
 import net.azisaba.gift.objects.CodesTable
 import net.azisaba.gift.objects.ExpirationStatus
 import net.azisaba.gift.registry.Registry
+import net.azisaba.gift.registry.findSerializerBySerialName
 import net.azisaba.gift.util.executeAsync
 import org.bukkit.ChatColor
 import org.bukkit.command.Command
@@ -56,20 +58,22 @@ class AzisabaGiftCommand(private val logger: Logger) : TabExecutor {
             } else if (ExpirationStatus.ExpiresAt.serializer().descriptor.serialName == args[0]) {
                 ExpirationStatus.ExpiresAt(args[1].toLong())
             } else {
-                val serializer = Registry.EXPIRATION_STATUS
-                    .getReadonlyMap()
-                    .entries
-                    .find { (_, serializer) -> serializer.descriptor.serialName == args[0] }
-                    ?.value
+                val serializer = Registry.EXPIRATION_STATUS.findSerializerBySerialName(args[0])
                 if (serializer == null) {
                     sender.sendMessage("${ChatColor.RED}指定されたExpirationStatusは無効です。")
                     return
                 }
-                JSON.decodeFromString(serializer, args.drop(1).joinToString(" "))
+                try {
+                    val json = if (args.size == 1) "{}" else args.drop(1).joinToString(" ")
+                    JSON.decodeFromString(serializer, json)
+                } catch (e: Exception) {
+                    sender.sendMessage("${ChatColor.RED}${e.javaClass.typeName}: ${e.message}")
+                    throw e
+                }
             }
             val newData = codes.data.copy(expirationStatus = expirationStatus)
-            DatabaseManager.executeUpdate("UPDATE `codes` SET `data` = ? WHERE `code` = ?", newData, code).close()
-            sender.sendMessage("${ChatColor.GREEN}コードの有効期限を${expirationStatus}に変更しました。")
+            DatabaseManager.executeUpdate("UPDATE `codes` SET `data` = ? WHERE `code` = ?", JSON.encodeToString(newData), code).close()
+            sender.sendMessage("${ChatColor.GREEN}コードのステータスを${expirationStatus}に変更しました。")
         } else {
             return
         }

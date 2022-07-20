@@ -14,9 +14,9 @@ import java.util.concurrent.CompletableFuture
 
 abstract class AbstractCommand {
     companion object {
-        fun literal(name: String) = LiteralArgumentBuilder.literal<CommandSource>(name)!!
+        fun literal(name: String): LiteralArgumentBuilder<CommandSource> = LiteralArgumentBuilder.literal(name)
 
-        fun <T> argument(name: String, type: ArgumentType<T>) = RequiredArgumentBuilder.argument<CommandSource, T>(name, type)!!
+        fun <T> argument(name: String, type: ArgumentType<T>): RequiredArgumentBuilder<CommandSource, T> = RequiredArgumentBuilder.argument(name, type)!!
     }
 
     fun createCommand() = BrigadierCommand(createBuilder())
@@ -41,7 +41,7 @@ fun SuggestionsBuilder.suggest(suggestions: List<String>): CompletableFuture<Sug
 }
 
 private fun matchesSubStr(input: String, suggestion: String): Boolean {
-    var i = 1
+    var i = 0
     while (!suggestion.startsWith(input, i)) {
         i = suggestion.indexOf('_', i)
         if (i < 0) {

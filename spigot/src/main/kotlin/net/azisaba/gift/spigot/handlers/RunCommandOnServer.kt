@@ -13,8 +13,8 @@ import java.util.UUID
  */
 @Serializable
 data class RunCommandOnServer(val commandWithoutSlash: String) : Handler {
-    override val isAvailableInVelocity = false
-    override val isAvailableInSpigot = true
+    override fun isAvailableInVelocity(): Boolean = false
+    override fun isAvailableInSpigot(): Boolean = true
 
     override suspend fun handle(uuid: UUID): Boolean {
         val player = Bukkit.getPlayer(uuid) ?: return false

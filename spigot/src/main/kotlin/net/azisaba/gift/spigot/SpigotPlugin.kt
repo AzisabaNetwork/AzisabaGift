@@ -20,6 +20,14 @@ import java.util.concurrent.atomic.AtomicInteger
 
 @Suppress("unused")
 class SpigotPlugin : JavaPlugin() {
+    companion object {
+        lateinit var instance: SpigotPlugin
+    }
+
+    init {
+        instance = this
+    }
+
     override fun onLoad() {
         SpigotPlatform
         setupFakeDispatcher()

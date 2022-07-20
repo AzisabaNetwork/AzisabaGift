@@ -5,6 +5,7 @@ import net.azisaba.gift.DatabaseManager
 import net.azisaba.gift.coroutines.MinecraftDispatcher
 import net.azisaba.gift.objects.CodesTable
 import net.azisaba.gift.objects.UsedCodesTable
+import net.azisaba.gift.spigot.SpigotPlugin
 import net.azisaba.gift.util.executeAsync
 import org.bukkit.ChatColor
 import org.bukkit.command.Command
@@ -45,7 +46,13 @@ class PromoCommand(private val logger: Logger) : TabExecutor {
                 logger.info("${sender.name} (${sender.uniqueId}) is trying to use code '$code'")
                 // check if code exists and is valid
                 val codes = CodesTable.select("SELECT * FROM `codes` WHERE `code` = ?", code).firstOrNull()
-                if (codes == null || !codes.isValid()) {
+                if (codes == null || !codes.isValid() || !codes.selector.isSelected(sender.uniqueId)) {
+                    sender.sendMessage("${ChatColor.RED}このコードは無効か、すでに期限切れです。")
+                    return@executeAsync
+                }
+                // server-name works as an extra guard for this. If server-name is absent, the command will always be allowed.
+                val isServerAllowed = SpigotPlugin.instance.config.getString("server-name")?.let { codes.data.isServerAllowed(it) } ?: true
+                if (!isServerAllowed) {
                     sender.sendMessage("${ChatColor.RED}このコードは無効か、すでに期限切れです。")
                     return@executeAsync
                 }
@@ -70,10 +77,10 @@ class PromoCommand(private val logger: Logger) : TabExecutor {
                 logger.info("Added used_codes record for player: ${sender.name} (${sender.uniqueId}), code: $code")
                 try {
                     codes.handler.handle(sender.uniqueId) {
-                        if (it.isAvailableInSpigot && it.isAvailableInVelocity) {
+                        if (it.isAvailableInSpigot() && it.isAvailableInVelocity()) {
                             used?.handled_velocity != true
                         } else {
-                            it.isAvailableInSpigot
+                            it.isAvailableInSpigot()
                         }
                     }
                 } catch (e: Throwable) {

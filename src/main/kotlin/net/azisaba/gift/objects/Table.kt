@@ -1,6 +1,7 @@
 package net.azisaba.gift.objects
 
 import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.serializerOrNull
@@ -41,7 +42,7 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
             .letSuspend { result ->
                 result.use { (rs) ->
                     val values = mutableListOf<T>()
-                    val ctr = clazz.constructors.last()
+                    val ctr = clazz.constructors.first { !it.isSynthetic }
                     while (rs.next()) {
                         val ctrArgs = mutableListOf<Any>()
                         ctr.parameters.forEachIndexed { index, param ->
@@ -63,28 +64,47 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
                 }
             }
 
-    suspend fun insert(tableName: String, value: T) {
+    suspend fun insertB(tableName: String, value: T, valueOverridesBuilder: MutableMap<String, Any?>.() -> Unit = {}) {
+        val map = mutableMapOf<String, Any?>()
+        valueOverridesBuilder(map)
+        insertM(tableName, value, map)
+    }
+
+    suspend fun insertM(tableName: String, value: T, valueOverrides: Map<String, Any?> = emptyMap()) {
         val sqlValues = value.javaClass.constructors[0].parameters.joinToString(", ") { "?" }
         val sqlActualValues =
             value
                 .javaClass
                 .constructors
-                .last()
+                .first { !it.isSynthetic }
                 .parameters
-                .map {
-                    val fieldValue = value.javaClass.fields.find { f -> f.name == it.name }!!.get(value)
-                    if (fieldValue == null) {
-                        null
+                .mapIndexed { index, param ->
+                    if (valueOverrides.containsKey(param.name)) {
+                        valueOverrides[param.name]
+                    } else if (valueOverrides.containsKey("$index")) {
+                        valueOverrides["$index"]
                     } else {
-                        it.toValue(fieldValue)
+                        val fieldValue =
+                            value.javaClass
+                                .declaredFields
+                                .find { f -> f.name == param.name }
+                                ?.apply { isAccessible = true }
+                                ?.get(value)
+                                ?: value.javaClass
+                                    .declaredFields
+                                    .filter { f -> f.name[0].isLowerCase() }[index]
+                                    .apply { isAccessible = true }
+                                    .get(value)
+                        if (fieldValue == null) {
+                            null
+                        } else {
+                            param.toValue(fieldValue)
+                        }
                     }
                 }
+                .toTypedArray()
 
-        DatabaseManager
-            .executeUpdate(
-                "INSERT INTO `$tableName` VALUES ($sqlValues)",
-                *sqlActualValues.toTypedArray(),
-            )
+        DatabaseManager.executeUpdate("INSERT INTO `$tableName` VALUES ($sqlValues)", *sqlActualValues).close()
     }
 
     @OptIn(InternalSerializationApi::class)
@@ -110,6 +130,7 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
             }
         }
 
+    @OptIn(InternalSerializationApi::class)
     private inline fun <reified T : Any> Parameter.toValue(value: T): Any =
         when (type) {
             Int::class.java -> value as Int
@@ -120,6 +141,15 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
             Short::class.java -> value as Short
             Boolean::class.java -> value as Boolean
             String::class.java -> value as String
-            else -> JSON.encodeToString(value)
+            else -> {
+                type.kotlin.serializerOrNull().let {
+                    if (it == null) {
+                        JSON.encodeToString(value)
+                    } else {
+                        @Suppress("UNCHECKED_CAST")
+                        JSON.encodeToString(it as KSerializer<Any>, value)
+                    }
+                }
+            }
         }
 }
