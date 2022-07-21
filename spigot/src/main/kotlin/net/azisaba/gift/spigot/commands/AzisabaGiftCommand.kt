@@ -120,28 +120,34 @@ class AzisabaGiftCommand : TabExecutor {
         }
         Bukkit.getScheduler().runTaskAsynchronously(SpigotPlugin.instance) {
             runBlocking {
-                when (args[0]) {
-                    "createcode" -> {
-                        if (sender.requires("azisabagift.createcode")) return@runBlocking
-                        if (args.size < 2) {
-                            sender.sendMessage("${ChatColor.RED}/azisabagift createcode <code>")
-                            return@runBlocking
+                try {
+                    when (args[0]) {
+                        "createcode" -> {
+                            if (sender.requires("azisabagift.createcode")) return@runBlocking
+                            if (args.size < 2) {
+                                sender.sendMessage("${ChatColor.RED}/azisabagift createcode <code>")
+                                return@runBlocking
+                            }
+                            Impl.createCode(sender, args[1])
                         }
-                        Impl.createCode(sender, args[1])
-                    }
-                    "code" -> {
-                        if (sender.requires("azisabagift.code")) return@runBlocking
-                        if (args.size < 3) {
-                            val choices = commandMap
-                                .getAs<Map<String, Any>>("code")
-                                .getAs<Map<String, Any>>(":__any__:<code>")
-                                .keys
-                                .joinToString("|")
-                            sender.sendMessage("${ChatColor.RED}/azisabagift code <code> ($choices)")
-                            return@runBlocking
+                        "code" -> {
+                            if (sender.requires("azisabagift.code")) return@runBlocking
+                            if (args.size < 3) {
+                                val choices = commandMap
+                                    .getAs<Map<String, Any>>("code")
+                                    .getAs<Map<String, Any>>(":__any__:<code>")
+                                    .keys
+                                    .joinToString("|")
+                                sender.sendMessage("${ChatColor.RED}/azisabagift code <code> ($choices)")
+                                return@runBlocking
+                            }
+                            Impl.Code.execute(sender, args[1], args[2], args.drop(3))
                         }
-                        Impl.Code.execute(sender, args[1], args[2], args.drop(3))
                     }
+                } catch (e: Throwable) {
+                    e.printStackTrace()
+                    sender.sendMessage("${ChatColor.RED}${e.javaClass.simpleName}: ${e.message}")
+                    throw e
                 }
             }
         }
