@@ -7,6 +7,7 @@ import net.azisaba.gift.objects.CodesTable
 import net.azisaba.gift.objects.UsedCodesTable
 import org.intellij.lang.annotations.Language
 import java.sql.PreparedStatement
+import java.sql.SQLException
 
 object DatabaseManager {
     private val dataSource = PluginConfig.instance.databaseConfig.createDataSource()
@@ -32,16 +33,24 @@ object DatabaseManager {
         type: QueryType<T>,
     ): CloseableResult<T> =
         withContext(MinecraftDispatcher.asyncDispatcher) {
-            val connection = dataSource.connection
-            val stmt = connection.prepareStatement(sql)
-            args.forEachIndexed { index, value ->
-                stmt.setObject(index + 1, value)
-            }
-            CloseableResult.of(type.getResult(stmt)) {
-                stmt.close()
-                connection.close()
+            try {
+                val connection = dataSource.connection
+                val stmt = connection.prepareStatement(sql)
+                args.forEachIndexed { index, value ->
+                    stmt.setObject(index + 1, value)
+                }
+                CloseableResult.of(type.getResult(stmt)) {
+                    stmt.close()
+                    connection.close()
+                }
+            } catch (e: SQLException) {
+                throw RuntimeException("Error executing query with values: ${args.toList()}: $sql", e)
             }
         }
+
+    fun close() {
+        dataSource.close()
+    }
 }
 
 class CloseableResult<T> private constructor(val result: T, val closeFunction: () -> Unit) : AutoCloseable {

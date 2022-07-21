@@ -51,6 +51,10 @@ class SpigotPlugin : JavaPlugin() {
         setupDispatcher()
     }
 
+    override fun onDisable() {
+        DatabaseManager.close()
+    }
+
     private fun setupFakeDispatcher() {
         val count = AtomicInteger()
         MinecraftDispatcher.syncDispatcher =

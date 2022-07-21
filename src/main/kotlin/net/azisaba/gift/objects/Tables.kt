@@ -48,16 +48,17 @@ data class Codes(
 ) {
     suspend fun isValid() =
         when (data.expirationStatus) {
-            is ExpirationStatus.ExpireAfterUse -> data.expirationStatus.expireAfterUse < getCodeUses()
+            is ExpirationStatus.ExpireAfterUse -> data.expirationStatus.expireAfterUse > getCodeUses()
             else -> data.expirationStatus.isValid()
         }
 
     suspend fun getCodeUses() =
-        DatabaseManager.executeQuery("SELECT COUNT(*) FROM `used_codes` WHERE `code` = ?").letSuspend { result ->
+        DatabaseManager.executeQuery("SELECT COUNT(*) FROM `used_codes` WHERE `code` = ?", code).letSuspend { result ->
             result.use { (rs) ->
                 if (!rs.next()) {
                     return@letSuspend 0
                 }
+                println(rs.getLong(1))
                 return@letSuspend rs.getLong(1)
             }
         }
