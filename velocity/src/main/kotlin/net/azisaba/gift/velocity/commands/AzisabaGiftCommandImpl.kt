@@ -7,7 +7,7 @@ import net.azisaba.gift.JSON
 import net.azisaba.gift.objects.Codes
 import net.azisaba.gift.objects.CodesData
 import net.azisaba.gift.objects.CodesTable
-import net.azisaba.gift.objects.DebugMessage
+import net.azisaba.gift.objects.SendMessage
 import net.azisaba.gift.objects.Everyone
 import net.azisaba.gift.objects.ExpirationStatus
 import net.azisaba.gift.objects.HandlerList
@@ -299,7 +299,7 @@ internal object AzisabaGiftCommandImpl {
             "INSERT INTO `codes` (`code`, `selector`, `handler`, `data`) VALUES (?, ?, ?, ?)",
             code,
             JSON.encodeToString<Selector>(Everyone),
-            JSON.encodeToString(HandlerList(listOf(DebugMessage("Hello, world!")))),
+            JSON.encodeToString(HandlerList(listOf(SendMessage("Hello, world!")))),
             JSON.encodeToString(CodesData(ExpirationStatus.NeverExpire))
         ).close()
         source.sendMessage(Component.text("Generated new code: $code", NamedTextColor.GREEN))

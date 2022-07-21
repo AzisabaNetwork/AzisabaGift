@@ -21,7 +21,7 @@ import java.util.UUID
 interface Handler {
     companion object {
         init {
-            Registry.HANDLER.registerK(DebugMessage::class, DebugMessage.serializer())
+            Registry.HANDLER.registerK(SendMessage::class, SendMessage.serializer())
             Registry.HANDLER.registerK(UnknownHandler::class, UnknownHandler.Serializer)
         }
     }
@@ -37,9 +37,9 @@ interface Handler {
     suspend fun handle(uuid: UUID): Boolean /* throws Throwable */
 }
 
-@SerialName("debug_message")
+@SerialName("send_message")
 @Serializable
-data class DebugMessage(val message: String) : Handler {
+data class SendMessage(val message: String) : Handler {
     override fun isAvailableInVelocity(): Boolean = true
     override fun isAvailableInSpigot(): Boolean = true
 
