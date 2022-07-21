@@ -2,6 +2,8 @@ package net.azisaba.gift.spigot.commands
 
 import kotlinx.coroutines.asExecutor
 import net.azisaba.gift.DatabaseManager
+import net.azisaba.gift.config.PluginConfig
+import net.azisaba.gift.config.SpigotPlatformConfig
 import net.azisaba.gift.coroutines.MinecraftDispatcher
 import net.azisaba.gift.objects.CodesTable
 import net.azisaba.gift.objects.UsedCodesTable
@@ -51,7 +53,9 @@ class PromoCommand(private val logger: Logger) : TabExecutor {
                     return@executeAsync
                 }
                 // server-name works as an extra guard for this. If server-name is absent, the command will always be allowed.
-                val isServerAllowed = SpigotPlugin.instance.config.getString("server-name")?.let { codes.data.isServerAllowed(it) } ?: true
+                val isServerAllowed = (PluginConfig.instance.platformConfig as? SpigotPlatformConfig)
+                    ?.serverName
+                    ?.let { codes.data.isServerAllowed(it) } ?: true
                 if (!isServerAllowed) {
                     sender.sendMessage("${ChatColor.RED}このコードは無効か、すでに期限切れです。")
                     return@executeAsync

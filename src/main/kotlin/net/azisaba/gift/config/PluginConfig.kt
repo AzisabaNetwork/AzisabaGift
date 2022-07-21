@@ -1,11 +1,11 @@
 package net.azisaba.gift.config
 
-import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlComment
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import net.azisaba.gift.YAML
 import org.mariadb.jdbc.Driver
 import java.nio.file.Files
 import java.nio.file.Path
@@ -16,11 +16,16 @@ import kotlin.io.path.writeText
 data class PluginConfig(
     val databaseConfig: DatabaseConfig = DatabaseConfig(),
     val providers: Providers = Providers(),
+    val platformConfig: PlatformConfig = PlatformConfig.Empty,
 ) {
     companion object {
         lateinit var instance: PluginConfig
 
-        fun loadConfig(dataDirectory: Path, logInfo: (message: String) -> Unit = {}) {
+        fun loadConfig(
+            dataDirectory: Path,
+            defaultInstance: PluginConfig = PluginConfig(),
+            logInfo: (message: String) -> Unit = {},
+        ) {
             if (!Files.isDirectory(dataDirectory)) {
                 Files.createDirectory(dataDirectory)
             }
@@ -32,10 +37,10 @@ data class PluginConfig(
                 #       Values will be kept but all non-default comments will be removed.
             """.trimIndent() + "\n"
             if (!Files.exists(configPath)) {
-                configPath.writeText(comment + Yaml.default.encodeToString(serializer(), PluginConfig()) + "\n")
+                configPath.writeText(comment + YAML.encodeToString(serializer(), defaultInstance) + "\n")
             }
-            instance = Yaml.default.decodeFromStream(serializer(), configPath.inputStream())
-            configPath.writeText(comment + Yaml.default.encodeToString(serializer(), instance) + "\n")
+            instance = YAML.decodeFromStream(serializer(), configPath.inputStream())
+            configPath.writeText(comment + YAML.encodeToString(serializer(), instance) + "\n")
 
             // initialize driver
             Driver()

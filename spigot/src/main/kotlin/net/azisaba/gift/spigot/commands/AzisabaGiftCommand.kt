@@ -13,11 +13,14 @@ import net.azisaba.gift.objects.Nobody
 import net.azisaba.gift.registry.Registry
 import net.azisaba.gift.registry.findSerializerBySerialName
 import net.azisaba.gift.spigot.SpigotPlugin
+import net.azisaba.gift.spigot.toFriendlyOutput
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
+import org.bukkit.Material
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.command.TabExecutor
+import org.bukkit.entity.Player
 
 @OptIn(ExperimentalSerializationApi::class)
 private val commandMap by lazy {
@@ -26,6 +29,7 @@ private val commandMap by lazy {
         "code" to mapOf(
             ":__any__:<code>" to mapOf(
                 "info" to Unit,
+                "clearusage" to Unit,
                 "set" to mapOf(
                     "selector" to Registry.SELECTOR
                         .getValues()
@@ -51,6 +55,14 @@ private val commandMap by lazy {
                         .getValues()
                         .map { it.descriptor.serialName }
                         .associateWith { mapOf("[<data>]" to Unit) },
+                    "itemhandler" to mapOf(
+                        ":__any__:<position-from-1>" to mapOf(
+                            "add" to Unit,
+                            "remove" to Unit,
+                            "info" to mapOf("[<position-from-1>]" to Unit),
+                            "getitem" to mapOf("<position-from-1>" to Unit),
+                        ),
+                    ),
                 ),
             ),
         ),
@@ -122,7 +134,7 @@ class AzisabaGiftCommand : TabExecutor {
                         if (args.size < 3) {
                             val choices = commandMap
                                 .getAs<Map<String, Any>>("code")
-                                .getAs<Map<String, Any>>("__any__")
+                                .getAs<Map<String, Any>>(":__any__:<code>")
                                 .keys
                                 .joinToString("|")
                             sender.sendMessage("${ChatColor.RED}/azisabagift code <code> ($choices)")
@@ -169,13 +181,14 @@ internal object Impl {
                 return
             }
             when (action) {
-                "info" -> executeInfo(sender, codes)
+                "info" -> info(sender, codes)
+                "clearusage" -> clearUsage(sender, codes)
                 "set" -> Set.execute(sender, codes, args)
                 "handlers" -> Handlers.execute(sender, codes, args)
             }
         }
 
-        private fun executeInfo(sender: CommandSender, codes: Codes) {
+        private fun info(sender: CommandSender, codes: Codes) {
             if (sender.requires("azisabagift.code.info")) return
             sender.sendMessage(
                 "${ChatColor.GREEN}コード「${ChatColor.YELLOW}${codes.code}${ChatColor.GREEN}」"
@@ -197,13 +210,22 @@ internal object Impl {
             )
         }
 
+        private suspend fun clearUsage(
+            sender: CommandSender,
+            codes: Codes,
+        ) {
+            if (sender.requires("azisabagift.code.clearusage")) return
+            DatabaseManager.executeUpdate("DELETE FROM `used_codes` WHERE `code` = ?", codes.code).close()
+            sender.sendMessage("${ChatColor.GREEN}コードの使用回数(使用したプレイヤー)をリセットしました。")
+        }
+
         object Set {
             suspend fun execute(sender: CommandSender, codes: Codes, args: List<String>) {
                 if (sender.requires("azisabagift.code.set")) return
                 if (args.isEmpty()) {
                     val choices = commandMap
                         .getAs<Map<String, Any>>("code")
-                        .getAs<Map<String, Any>>("__any__")
+                        .getAs<Map<String, Any>>(":__any__:<code>")
                         .getAs<Map<String, Any>>("set")
                         .keys
                         .joinToString("|")
@@ -315,7 +337,7 @@ internal object Impl {
                 if (args.isEmpty()) {
                     val choices = commandMap
                         .getAs<Map<String, Any>>("code")
-                        .getAs<Map<String, Any>>("__any__")
+                        .getAs<Map<String, Any>>(":__any__:<code>")
                         .getAs<Map<String, Any>>("handlers")
                         .keys
                         .joinToString("|")
@@ -355,6 +377,26 @@ internal object Impl {
                         }
                         val data = args.drop(2).let { if (it.isEmpty()) "{}" else it.joinToString(" ") }
                         append(sender, codes, args[1], data)
+                    }
+                    "itemhandler" -> {
+                        if (args.size < 3) {
+                            val choices = commandMap
+                                .getAs<Map<String, Any>>("code")
+                                .getAs<Map<String, Any>>(":__any__:<code>")
+                                .getAs<Map<String, Any>>("handlers")
+                                .getAs<Map<String, Any>>("itemhandler")
+                                .getAs<Map<String, Any>>(":__any__:<position-from-1>")
+                                .keys
+                                .joinToString("|")
+                            sender.sendMessage("${ChatColor.RED}/azisabagift code <code> handlers itemhandler <position-from-1> ($choices)")
+                            return
+                        }
+                        val position = args[1].toIntOrNull() ?: run {
+                            sender.sendMessage("${ChatColor.RED}指定された数値は無効です。")
+                            return
+                        }
+                        val action = args[2]
+                        ItemHandler.execute(sender, codes, position, action, args.drop(3))
                     }
                 }
             }
@@ -400,7 +442,7 @@ internal object Impl {
                 sender.sendMessage("${ChatColor.GREEN}#${position} (${oldHandler})を削除しました。")
             }
 
-            suspend fun insert(
+            private suspend fun insert(
                 sender: CommandSender,
                 codes: Codes,
                 position: Int, // first element is 1
@@ -431,6 +473,160 @@ internal object Impl {
                     codes.id,
                 ).close()
                 sender.sendMessage("${ChatColor.GREEN}${handler}を追加しました。")
+            }
+
+            object ItemHandler {
+                suspend fun execute(
+                    sender: CommandSender,
+                    codes: Codes,
+                    position: Int, // first element is 1
+                    action: String,
+                    args: List<String>,
+                ) {
+                    if (sender.requires("azisabagift.code.handlers.itemhandler")) return
+                    if (position < 1 || position > codes.handler.handlers.size) {
+                        sender.sendMessage("${ChatColor.RED}位置は1以上${codes.handler.handlers.size}以下にしてください。")
+                        return
+                    }
+                    val itemHandler = codes.handler.handlers[position - 1] as? net.azisaba.gift.spigot.handlers.ItemHandler ?: run {
+                        sender.sendMessage("${ChatColor.RED}指定されたHandlerはItemHandlerではありません。")
+                        return
+                    }
+                    when (action.lowercase()) {
+                        "add" -> add(sender, codes, itemHandler)
+                        "remove" -> {
+                            val itemPosition = args[0].toIntOrNull() ?: run {
+                                sender.sendMessage("${ChatColor.RED}指定された数値は無効です。")
+                                return
+                            }
+                            remove(sender, codes, itemHandler, itemPosition)
+                        }
+                        "info" -> {
+                            if (args.isEmpty()) {
+                                info(sender, itemHandler)
+                            } else {
+                                val itemPosition = args[0].toIntOrNull() ?: run {
+                                    sender.sendMessage("${ChatColor.RED}指定された数値は無効です。")
+                                    return
+                                }
+                                infoItem(sender, itemHandler, itemPosition)
+                            }
+                        }
+                        "getitem" -> {
+                            val itemPosition = args[0].toIntOrNull() ?: run {
+                                sender.sendMessage("${ChatColor.RED}指定された数値は無効です。")
+                                return
+                            }
+                            getItem(sender, itemHandler, itemPosition)
+                        }
+                    }
+                }
+
+                private suspend fun add(
+                    sender: CommandSender,
+                    codes: Codes,
+                    itemHandler: net.azisaba.gift.spigot.handlers.ItemHandler,
+                ) {
+                    if (sender !is Player) {
+                        sender.sendMessage("${ChatColor.RED}このコマンドはプレイヤーのみ実行できます。")
+                        return
+                    }
+                    if (sender.requires("azisabagift.code.handlers.itemhandler.add")) return
+                    itemHandler.getMaxItemListSize()?.let {
+                        if (itemHandler.getItemList().size >= it) {
+                            sender.sendMessage("${ChatColor.RED}このHandlerには追加できるアイテム数は${it}個までです。")
+                            return
+                        }
+                    }
+                    val item = sender.inventory.itemInMainHand
+                    if (item == null || item.type == Material.AIR) {
+                        sender.sendMessage("${ChatColor.RED}手に持っているアイテムがありません。")
+                        return
+                    }
+                    // this method mutates itself
+                    itemHandler.setItemList(itemHandler.getItemList().toMutableList().apply { add(item) })
+                    DatabaseManager.executeUpdate(
+                        "UPDATE `codes` SET `handler` = ? WHERE `id` = ?",
+                        JSON.encodeToString(codes.handler),
+                        codes.id,
+                    ).close()
+                    sender.sendMessage("${ChatColor.YELLOW}${item.toFriendlyOutput()}${ChatColor.GREEN}を追加しました。")
+                }
+
+                private suspend fun remove(
+                    sender: CommandSender,
+                    codes: Codes,
+                    itemHandler: net.azisaba.gift.spigot.handlers.ItemHandler,
+                    position: Int, // first element is 1
+                ) {
+                    if (sender.requires("azisabagift.code.handlers.itemhandler.remove")) return
+                    if (position < 1 || position > itemHandler.getItemList().size) {
+                        sender.sendMessage("${ChatColor.RED}位置は1以上${itemHandler.getItemList().size}以下にしてください。")
+                        return
+                    }
+                    val oldItem = itemHandler.getItemList()[position - 1]
+                    itemHandler.setItemList(itemHandler.getItemList().toMutableList().apply { removeAt(position - 1) })
+                    DatabaseManager.executeUpdate(
+                        "UPDATE `codes` SET `handler` = ? WHERE `id` = ?",
+                        JSON.encodeToString(codes.handler),
+                        codes.id,
+                    ).close()
+                    sender.sendMessage(
+                        "${ChatColor.GREEN}#${position} (${ChatColor.YELLOW}${oldItem.toFriendlyOutput()}${ChatColor.GREEN})を削除しました。"
+                    )
+                }
+
+                private fun info(
+                    sender: CommandSender,
+                    itemHandler: net.azisaba.gift.spigot.handlers.ItemHandler,
+                ) {
+                    if (sender.requires("azisabagift.code.handlers.itemhandler.info")) return
+                    itemHandler.getMaxItemListSize().apply {
+                        if (this == null) {
+                            sender.sendMessage("${ChatColor.GREEN}アイテム一覧:")
+                        } else {
+                            sender.sendMessage("${ChatColor.GREEN}アイテム一覧 (最大: $this):")
+                        }
+                    }
+                    itemHandler.getItemList().forEachIndexed { index, stack ->
+                        sender.sendMessage("${ChatColor.GRAY} ${index + 1}. ${ChatColor.YELLOW}${stack.toFriendlyOutput()}")
+                    }
+                }
+
+                private fun infoItem(
+                    sender: CommandSender,
+                    itemHandler: net.azisaba.gift.spigot.handlers.ItemHandler,
+                    position: Int, // first element is 1
+                ) {
+                    if (sender.requires("azisabagift.code.handlers.itemhandler.info")) return
+                    if (position < 1 || position > itemHandler.getItemList().size) {
+                        sender.sendMessage("${ChatColor.RED}位置は1以上${itemHandler.getItemList().size}以下にしてください。")
+                        return
+                    }
+                    val item = itemHandler.getItemList()[position - 1]
+                    sender.sendMessage("${ChatColor.GREEN}#${position} (${ChatColor.YELLOW}${itemHandler.getItemList()[position - 1].toFriendlyOutput()}${ChatColor.GREEN}):")
+                    sender.sendMessage("${ChatColor.GREEN} - Type: ${ChatColor.RESET}${item.type}")
+                    sender.sendMessage("${ChatColor.GREEN} - Amount: ${ChatColor.RESET}${item.amount}")
+                    sender.sendMessage("${ChatColor.GREEN} - Display name: ${ChatColor.RESET}${item.itemMeta?.displayName}")
+                }
+
+                private fun getItem(
+                    sender: CommandSender,
+                    itemHandler: net.azisaba.gift.spigot.handlers.ItemHandler,
+                    position: Int, // first element is 1
+                ) {
+                    val player = sender as? Player ?: run {
+                        sender.sendMessage("${ChatColor.RED}プレイヤーのみ実行できます。")
+                        return
+                    }
+                    if (sender.requires("azisabagift.code.handlers.itemhandler.getitem")) return
+                    if (position < 1 || position > itemHandler.getItemList().size) {
+                        sender.sendMessage("${ChatColor.RED}位置は1以上${itemHandler.getItemList().size}以下にしてください。")
+                        return
+                    }
+                    val item = itemHandler.getItemList()[position - 1]
+                    player.inventory.addItem(item)
+                }
             }
         }
 

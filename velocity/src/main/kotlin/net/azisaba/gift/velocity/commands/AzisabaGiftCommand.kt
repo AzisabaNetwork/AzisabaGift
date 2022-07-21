@@ -32,6 +32,15 @@ object AzisabaGiftCommand : AbstractCommand() {
                             )
                         }
                     )
+                    .then(literal("clearusage")
+                        .requires { it.hasPermission("azisabagift.code.clearusage") }
+                        .executesSuspend {
+                            AzisabaGiftCommandImpl.Code.clearUsage(
+                                it.source,
+                                StringArgumentType.getString(it, "code"),
+                            )
+                        }
+                    )
                     .then(literal("set")
                         .requires { it.hasPermission("azisabagift.code.set") }
                         .then(literal("selector")

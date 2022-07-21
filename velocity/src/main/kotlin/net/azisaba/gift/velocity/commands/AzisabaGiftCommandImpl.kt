@@ -64,6 +64,20 @@ internal object AzisabaGiftCommandImpl {
             return 0
         }
 
+        suspend fun clearUsage(
+            source: CommandSource,
+            code: String,
+        ): Int {
+            val codes = CodesTable.select("SELECT * FROM `codes` WHERE `code` = ?", code).firstOrNull()
+            if (codes == null) {
+                source.sendMessage(Component.text("コードが見つかりません。", NamedTextColor.RED))
+                return 0
+            }
+            DatabaseManager.executeUpdate("DELETE FROM `used_codes` WHERE `code` = ?", codes.code).close()
+            source.sendMessage(Component.text("コードの使用回数(使用したプレイヤー)をリセットしました。", NamedTextColor.GREEN))
+            return 0
+        }
+
         internal object Set {
             suspend fun setSelector(
                 source: CommandSource,

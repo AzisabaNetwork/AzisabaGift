@@ -32,7 +32,7 @@ class VelocityPlugin @Inject constructor(
         VelocityPlatform(server)
         setupDispatcher(server)
         setupProvider()
-        PluginConfig.loadConfig(dataDirectory, logger::info)
+        PluginConfig.loadConfig(dataDirectory, logInfo = logger::info)
         Registry // load registry
     }
 

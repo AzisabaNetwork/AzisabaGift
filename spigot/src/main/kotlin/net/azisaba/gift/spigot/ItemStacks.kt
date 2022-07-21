@@ -23,3 +23,10 @@ fun ByteArray.toItemStack(): ItemStack = ByteArrayInputStream(this).use { byteIn
 fun ByteArray.encodeToBase64String() = Base64.getEncoder().encodeToString(this)!!
 
 fun String.decodeFromBase64String() = Base64.getDecoder().decode(this)!!
+
+fun ItemStack.toFriendlyOutput(): String {
+    val displayName = if (hasItemMeta() && itemMeta.hasDisplayName()) itemMeta.displayName else "null"
+    val type = type.name
+    val name = displayName ?: type
+    return "$name (type: $type, amount: $amount)"
+}

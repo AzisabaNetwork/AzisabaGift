@@ -10,8 +10,11 @@ import net.azisaba.gift.registry.registerK
 import net.azisaba.gift.spigot.bridge.SpigotPlatform
 import net.azisaba.gift.spigot.commands.AzisabaGiftCommand
 import net.azisaba.gift.spigot.commands.PromoCommand
+import net.azisaba.gift.config.SpigotPlatformConfig
 import net.azisaba.gift.spigot.handlers.GiveItems
+import net.azisaba.gift.spigot.handlers.GivePlayerPoints
 import net.azisaba.gift.spigot.handlers.RunCommandOnServer
+import net.azisaba.gift.spigot.listeners.ItemOwnerListener
 import net.azisaba.gift.spigot.providers.SpigotDataProvider
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
@@ -32,11 +35,12 @@ class SpigotPlugin : JavaPlugin() {
         SpigotPlatform
         setupFakeDispatcher()
         setupProvider()
-        PluginConfig.loadConfig(dataFolder.toPath(), logger::info)
+        PluginConfig.loadConfig(dataFolder.toPath(), PluginConfig(platformConfig = SpigotPlatformConfig()), logger::info)
         setupRegistry()
     }
 
     override fun onEnable() {
+        Bukkit.getPluginManager().registerEvents(ItemOwnerListener, this)
         runBlocking {
             DatabaseManager.init()
         }
@@ -69,5 +73,6 @@ class SpigotPlugin : JavaPlugin() {
     private fun setupRegistry() {
         Registry.HANDLER.registerK(GiveItems::class, GiveItems.serializer())
         Registry.HANDLER.registerK(RunCommandOnServer::class, RunCommandOnServer.serializer())
+        Registry.HANDLER.registerK(GivePlayerPoints::class, GivePlayerPoints.serializer())
     }
 }
