@@ -71,13 +71,13 @@ abstract class Table<T : Any>(clazz: KClass<T>) {
     }
 
     suspend fun insertM(tableName: String, value: T, valueOverrides: Map<String, Any?> = emptyMap()) {
-        val sqlValues = value.javaClass.constructors[0].parameters.joinToString(", ") { "?" }
+        val ctr = value
+            .javaClass
+            .constructors
+            .first { !it.isSynthetic }
+        val sqlValues = ctr.parameters.joinToString(", ") { "?" }
         val sqlActualValues =
-            value
-                .javaClass
-                .constructors
-                .first { !it.isSynthetic }
-                .parameters
+            ctr.parameters
                 .mapIndexed { index, param ->
                     if (valueOverrides.containsKey(param.name)) {
                         valueOverrides[param.name]
