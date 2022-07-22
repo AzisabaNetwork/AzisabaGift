@@ -5,6 +5,8 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import net.azisaba.gift.DatabaseManager
 import net.azisaba.gift.JSON
+import net.azisaba.gift.config.PluginConfig
+import net.azisaba.gift.config.SpigotPlatformConfig
 import net.azisaba.gift.objects.Codes
 import net.azisaba.gift.objects.CodesData
 import net.azisaba.gift.objects.CodesTable
@@ -21,6 +23,7 @@ import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.command.TabExecutor
 import org.bukkit.entity.Player
+import java.util.regex.Pattern
 
 @OptIn(ExperimentalSerializationApi::class)
 private val commandMap by lazy {
@@ -178,7 +181,14 @@ internal object Impl {
             sender.sendMessage("${ChatColor.RED}指定されたコードはすでに存在します。")
             return
         }
-        val newCodes = Codes(0L, code, Nobody, HandlerList(), CodesData())
+        val allowedServer = (PluginConfig.instance.platformConfig as? SpigotPlatformConfig)?.serverName
+        val codesData = if (allowedServer != null) {
+            CodesData(allowedOnServer = Pattern.quote(allowedServer))
+        } else {
+            sender.sendMessage("${ChatColor.GOLD}警告: 「/azisabagift code <コード> set allowedserver」で設定しない場合、コードは全サーバーで使用可能になります。")
+            CodesData()
+        }
+        val newCodes = Codes(0L, code, Nobody, HandlerList(), codesData)
         CodesTable.insertB("codes", newCodes) { put("id", null); put("0", null) } // for consistency between different configurations
         sender.sendMessage("${ChatColor.GREEN}コードを作成しました。")
     }
