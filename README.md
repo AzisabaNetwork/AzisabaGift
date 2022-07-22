@@ -20,4 +20,4 @@ There is no documentation currently, but here are the important things to develo
 
 ## Why not use [Exposed](https://github.com/JetBrains/Exposed) API?
 
-Exposed requires kotlin-reflect and its makes Kotlin not able to `relocate`.
+Exposed requires kotlin-reflect, and it makes Kotlin not able to use `relocate`.
