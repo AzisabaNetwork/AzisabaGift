@@ -1,7 +1,6 @@
 package net.azisaba.gift.registry
 
 import kotlinx.serialization.KSerializer
-import net.azisaba.gift.config.PlatformConfig
 import net.azisaba.gift.objects.ExpirationStatus
 import net.azisaba.gift.objects.Handler
 import net.azisaba.gift.objects.Selector
@@ -16,8 +15,6 @@ abstract class Registry<K : Any, V : Any> {
         val SELECTOR: Registry<Class<out Selector>, KSerializer<out Selector>> = MutableRegistry()
         @JvmStatic
         val EXPIRATION_STATUS: Registry<Class<out ExpirationStatus>, KSerializer<out ExpirationStatus>> = MutableRegistry()
-
-        internal val PLATFORM_CONFIG: Registry<Class<out PlatformConfig>, KSerializer<out PlatformConfig>> = MutableRegistry()
 
         init {
             Selector
