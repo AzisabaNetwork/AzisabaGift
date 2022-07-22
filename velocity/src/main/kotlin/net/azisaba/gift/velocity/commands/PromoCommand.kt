@@ -6,6 +6,7 @@ import com.velocitypowered.api.command.CommandSource
 import com.velocitypowered.api.proxy.Player
 import net.azisaba.gift.DatabaseManager
 import net.azisaba.gift.objects.CodesTable
+import net.azisaba.gift.objects.SelectorResult
 import net.azisaba.gift.objects.UsedCodesTable
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -35,10 +36,21 @@ class PromoCommand(private val logger: Logger) : AbstractCommand() {
             val codes = CodesTable.select("SELECT * FROM `codes` WHERE `code` = ?", code).firstOrNull()
             if (codes == null ||
                 !codes.isValid() ||
-                !codes.selector.isSelected(player.uniqueId) ||
                 !codes.data.isServerAllowed(player.currentServer.get().serverInfo.name)
             ) {
+                logger.info("${player.username} (${player.uniqueId}) is not allowed to use the code or doesn't exist: '$code'")
                 player.sendMessage(Component.text("このコードは無効か、すでに期限切れです。", NamedTextColor.RED))
+                return 0
+            }
+            val selectorResult = codes.selector.isSelected(player.uniqueId)
+            if (selectorResult == SelectorResult.FALSE) {
+                logger.info("SelectorResult is FALSE. player: ${player.username} (${player.uniqueId})")
+                player.sendMessage(Component.text("このコードは無効か、すでに期限切れです。", NamedTextColor.RED))
+                return 0
+            }
+            if (selectorResult == SelectorResult.SKIP) {
+                logger.info("Skipping because SelectorResult is SKIP. player: ${player.username} (${player.uniqueId})")
+                player.spoofChatInput("/promo $code")
                 return 0
             }
             // check if player has already used this code

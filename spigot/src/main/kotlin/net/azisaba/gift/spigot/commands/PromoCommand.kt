@@ -5,6 +5,7 @@ import net.azisaba.gift.DatabaseManager
 import net.azisaba.gift.config.PluginConfig
 import net.azisaba.gift.config.SpigotPlatformConfig
 import net.azisaba.gift.objects.CodesTable
+import net.azisaba.gift.objects.SelectorResult
 import net.azisaba.gift.objects.UsedCodesTable
 import net.azisaba.gift.spigot.SpigotPlugin
 import org.bukkit.Bukkit
@@ -49,7 +50,8 @@ class PromoCommand(private val logger: Logger) : TabExecutor {
                         logger.info("${sender.name} (${sender.uniqueId}) is trying to use code '$code'")
                         // check if code exists and is valid
                         val codes = CodesTable.select("SELECT * FROM `codes` WHERE `code` = ?", code).firstOrNull()
-                        if (codes == null || !codes.isValid() || !codes.selector.isSelected(sender.uniqueId)) {
+                        if (codes == null || !codes.isValid() || codes.selector.isSelected(sender.uniqueId) != SelectorResult.TRUE) {
+                            // treat SKIP as invalid
                             sender.sendMessage("${ChatColor.RED}このコードは無効か、すでに期限切れです。")
                             return@runBlocking
                         }

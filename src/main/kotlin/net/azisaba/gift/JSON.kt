@@ -13,6 +13,7 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.SerializersModuleBuilder
 import kotlinx.serialization.modules.polymorphic
 import net.azisaba.gift.objects.UnknownHandler
+import net.azisaba.gift.objects.UnknownSelector
 import net.azisaba.gift.registry.Registry
 import net.azisaba.gift.serializers.DynamicLookupSerializer
 import net.azisaba.gift.serializers.UUIDSerializer
@@ -30,7 +31,7 @@ val JSON = Json {
     serializersModule = SerializersModule {
         contextual(Any::class, DynamicLookupSerializer)
         contextual(UUID::class, UUIDSerializer)
-        registerPolymorphic(Registry.SELECTOR)
+        registerPolymorphic(Registry.SELECTOR) { UnknownSelector.Serializer }
         registerPolymorphic(Registry.HANDLER) { UnknownHandler.Serializer }
         registerPolymorphic(Registry.EXPIRATION_STATUS)
     }

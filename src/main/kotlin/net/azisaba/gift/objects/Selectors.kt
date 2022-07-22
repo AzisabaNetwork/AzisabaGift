@@ -1,9 +1,20 @@
 package net.azisaba.gift.objects
 
 import kotlinx.serialization.Contextual
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.descriptors.element
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import net.azisaba.gift.JSONWithoutRegistry
 import net.azisaba.gift.config.PluginConfig
 import net.azisaba.gift.providers.DataProviders
@@ -11,6 +22,21 @@ import net.azisaba.gift.providers.types.FirstJoinedTimeProvider
 import net.azisaba.gift.registry.Registry
 import net.azisaba.gift.registry.registerK
 import java.util.UUID
+
+enum class SelectorResult {
+    TRUE,
+    FALSE,
+    SKIP;
+
+    companion object {
+        fun of(expression: Boolean): SelectorResult =
+            if (expression) {
+                TRUE
+            } else {
+                FALSE
+            }
+    }
+}
 
 interface Selector {
     companion object {
@@ -44,31 +70,31 @@ interface Selector {
         }
     }
 
-    suspend fun isSelected(player: UUID): Boolean
+    suspend fun isSelected(player: UUID): SelectorResult
 }
 
 @Serializable
 @SerialName("everyone")
 object Everyone : Selector {
-    override suspend fun isSelected(player: UUID) = true
+    override suspend fun isSelected(player: UUID) = SelectorResult.TRUE
 }
 
 @Serializable
 @SerialName("nobody")
 object Nobody : Selector {
-    override suspend fun isSelected(player: UUID): Boolean = false
+    override suspend fun isSelected(player: UUID) = SelectorResult.FALSE
 }
 
 @Serializable
 @SerialName("single_player")
 data class SinglePlayer(@Contextual val player: UUID) : Selector {
-    override suspend fun isSelected(player: UUID): Boolean = player == this.player
+    override suspend fun isSelected(player: UUID) = SelectorResult.of(player == this.player)
 }
 
 @Serializable
 @SerialName("multiple_players")
 data class MultiplePlayers(val players: List<@Contextual UUID>) : Selector {
-    override suspend fun isSelected(player: UUID): Boolean = players.contains(player)
+    override suspend fun isSelected(player: UUID) = SelectorResult.of(players.contains(player))
 }
 
 @Serializable
@@ -82,11 +108,32 @@ data class FirstJoinedAfter(val time: Long) : Selector {
         )::getFirstJoinedTime
     }
 
-    override suspend fun isSelected(player: UUID): Boolean = provider(player) > time
+    override suspend fun isSelected(player: UUID) = SelectorResult.of(provider(player) > time)
 }
 
 @Serializable
 @SerialName("first_joined_before")
 data class FirstJoinedBefore(val time: Long) : Selector {
-    override suspend fun isSelected(player: UUID): Boolean = FirstJoinedAfter.provider(player) < time
+    override suspend fun isSelected(player: UUID) = SelectorResult.of(FirstJoinedAfter.provider(player) < time)
+}
+
+data class UnknownSelector(val json: JsonObject) : Selector {
+    override suspend fun isSelected(player: UUID): SelectorResult = SelectorResult.SKIP
+
+    object Serializer : KSerializer<UnknownSelector> {
+        override val descriptor: SerialDescriptor = buildClassSerialDescriptor("UnknownHandler") {
+            element<JsonElement>("json")
+        }
+
+        override fun deserialize(decoder: Decoder): UnknownSelector {
+            val jsonInput = decoder as? JsonDecoder ?: error("Can be deserialized only by JSON")
+            val json = jsonInput.decodeJsonElement().jsonObject
+            return UnknownSelector(JsonObject(json))
+        }
+
+        override fun serialize(encoder: Encoder, value: UnknownSelector) {
+            val jsonOutput = encoder as? JsonEncoder ?: error("Can be serialized only by JSON")
+            jsonOutput.encodeJsonElement(value.json)
+        }
+    }
 }

@@ -17,7 +17,7 @@ subprojects {
 
 allprojects {
     group = "net.azisaba.gift"
-    version = "1.0.0-SNAPSHOT"
+    version = "1.1.0-SNAPSHOT"
 
     repositories {
         mavenCentral()
@@ -29,6 +29,7 @@ allprojects {
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.3")
         implementation("com.charleskorn.kaml:kaml:0.46.0") // YAML support for kotlinx.serialization
         implementation("org.mariadb.jdbc:mariadb-java-client:3.0.6")
+        @Suppress("GradlePackageUpdate")
         implementation("com.zaxxer:HikariCP:4.0.3") // For Java 8
         testImplementation(kotlin("test"))
     }
