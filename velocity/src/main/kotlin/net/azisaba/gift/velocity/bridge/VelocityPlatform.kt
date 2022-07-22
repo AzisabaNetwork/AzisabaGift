@@ -8,7 +8,12 @@ import java.util.UUID
 
 class VelocityPlatform(private val server: ProxyServer) : Platform {
     companion object {
-        val legacyComponentSerializer = LegacyComponentSerializer.legacySection()
+        val legacyComponentSerializer =
+            LegacyComponentSerializer
+                .builder()
+                .character('&')
+                .extractUrls()
+                .build()
     }
 
     init {
