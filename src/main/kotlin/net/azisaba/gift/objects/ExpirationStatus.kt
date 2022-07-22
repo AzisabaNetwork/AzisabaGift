@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 import net.azisaba.gift.registry.Registry
 import net.azisaba.gift.registry.registerK
 
-sealed interface ExpirationStatus {
+interface ExpirationStatus {
     companion object {
         init {
             Registry.EXPIRATION_STATUS.registerK(NeverExpire::class, NeverExpire.serializer())
