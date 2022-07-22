@@ -12,9 +12,15 @@ abstract class Registry<K : Any, V : Any> {
         @JvmStatic
         val HANDLER: Registry<Class<out Handler>, KSerializer<out Handler>> = MutableRegistry()
         @JvmStatic
+        val HANDLER_DEFAULT_VALUE: Registry<Class<out Handler>, String> = MutableRegistry()
+        @JvmStatic
         val SELECTOR: Registry<Class<out Selector>, KSerializer<out Selector>> = MutableRegistry()
         @JvmStatic
+        val SELECTOR_DEFAULT_VALUE: Registry<Class<out Selector>, String> = MutableRegistry()
+        @JvmStatic
         val EXPIRATION_STATUS: Registry<Class<out ExpirationStatus>, KSerializer<out ExpirationStatus>> = MutableRegistry()
+        @JvmStatic
+        val EXPIRATION_STATUS_DEFAULT_VALUE: Registry<Class<out ExpirationStatus>, String> = MutableRegistry()
 
         init {
             Selector

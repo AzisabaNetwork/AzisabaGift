@@ -2,6 +2,8 @@ package net.azisaba.gift.objects
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import net.azisaba.gift.JSONWithoutRegistry
 import net.azisaba.gift.registry.Registry
 import net.azisaba.gift.registry.registerK
 
@@ -10,7 +12,15 @@ interface ExpirationStatus {
         init {
             Registry.EXPIRATION_STATUS.registerK(NeverExpire::class, NeverExpire.serializer())
             Registry.EXPIRATION_STATUS.registerK(ExpireAfterUse::class, ExpireAfterUse.serializer())
+            Registry.EXPIRATION_STATUS_DEFAULT_VALUE.registerK(
+                ExpireAfterUse::class,
+                JSONWithoutRegistry.encodeToString(ExpireAfterUse(5)),
+            )
             Registry.EXPIRATION_STATUS.registerK(ExpiresAt::class, ExpiresAt.serializer())
+            Registry.EXPIRATION_STATUS_DEFAULT_VALUE.registerK(
+                ExpiresAt::class,
+                JSONWithoutRegistry.encodeToString(ExpiresAt(System.currentTimeMillis())),
+            )
             Registry.EXPIRATION_STATUS.registerK(Expired::class, Expired.serializer())
             Registry.EXPIRATION_STATUS.registerK(Revoked::class, Revoked.serializer())
         }

@@ -32,13 +32,15 @@ private val commandMap by lazy {
                 "clearusage" to Unit,
                 "set" to mapOf(
                     "selector" to Registry.SELECTOR
-                        .getValues()
-                        .map { it.descriptor.serialName }
-                        .associateWith { mapOf("[<data>]" to Unit) },
+                        .getReadonlyMap()
+                        .entries
+                        .associateWith { (clazz, _) -> mapOf((Registry.SELECTOR_DEFAULT_VALUE.get(clazz) ?: "{}") to Unit) }
+                        .mapKeys { (entry, _) -> entry.value.descriptor.serialName },
                     "expirationstatus" to Registry.EXPIRATION_STATUS
-                        .getValues()
-                        .map { it.descriptor.serialName }
-                        .associateWith { mapOf("[<data>]" to Unit) },
+                        .getReadonlyMap()
+                        .entries
+                        .associateWith { (clazz, _) -> mapOf((Registry.EXPIRATION_STATUS_DEFAULT_VALUE.get(clazz) ?: "{}") to Unit) }
+                        .mapKeys { (entry, _) -> entry.value.descriptor.serialName },
                     "allowedserver" to mapOf(".*" to Unit),
                 ),
                 "handlers" to mapOf(
@@ -47,14 +49,16 @@ private val commandMap by lazy {
                     "remove" to mapOf("<position-from-1>" to Unit),
                     "insert" to mapOf(
                         ":__any__:<position-from-1>" to Registry.HANDLER
-                            .getValues()
-                            .map { it.descriptor.serialName }
-                            .associateWith { mapOf("[<data>]" to Unit) },
+                            .getReadonlyMap()
+                            .entries
+                            .associateWith { (clazz, _) -> mapOf((Registry.HANDLER_DEFAULT_VALUE.get(clazz) ?: "{}") to Unit) }
+                            .mapKeys { (entry, _) -> entry.value.descriptor.serialName },
                     ),
                     "append" to Registry.HANDLER
-                        .getValues()
-                        .map { it.descriptor.serialName }
-                        .associateWith { mapOf("[<data>]" to Unit) },
+                        .getReadonlyMap()
+                        .entries
+                        .associateWith { (clazz, _) -> mapOf((Registry.HANDLER_DEFAULT_VALUE.get(clazz) ?: "{}") to Unit) }
+                        .mapKeys { (entry, _) -> entry.value.descriptor.serialName },
                     "itemhandler" to mapOf(
                         ":__any__:<position-from-1>" to mapOf(
                             "add" to Unit,

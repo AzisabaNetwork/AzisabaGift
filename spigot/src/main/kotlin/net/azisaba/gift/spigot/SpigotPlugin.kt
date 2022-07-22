@@ -2,7 +2,9 @@ package net.azisaba.gift.spigot
 
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
 import net.azisaba.gift.DatabaseManager
+import net.azisaba.gift.JSONWithoutRegistry
 import net.azisaba.gift.config.PluginConfig
 import net.azisaba.gift.coroutines.MinecraftDispatcher
 import net.azisaba.gift.registry.Registry
@@ -77,6 +79,14 @@ class SpigotPlugin : JavaPlugin() {
     private fun setupRegistry() {
         Registry.HANDLER.registerK(GiveItems::class, GiveItems.serializer())
         Registry.HANDLER.registerK(RunCommandOnServer::class, RunCommandOnServer.serializer())
+        Registry.HANDLER_DEFAULT_VALUE.registerK(
+            RunCommandOnServer::class,
+            JSONWithoutRegistry.encodeToString(RunCommandOnServer("tell %player_name% Hello %player_uuid%!", true)),
+        )
         Registry.HANDLER.registerK(GivePlayerPoints::class, GivePlayerPoints.serializer())
+        Registry.HANDLER_DEFAULT_VALUE.registerK(
+            GivePlayerPoints::class,
+            JSONWithoutRegistry.encodeToString(GivePlayerPoints(10)),
+        )
     }
 }

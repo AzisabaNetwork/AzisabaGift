@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.descriptors.element
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
@@ -13,6 +14,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
+import net.azisaba.gift.JSONWithoutRegistry
 import net.azisaba.gift.bridge.Platform
 import net.azisaba.gift.registry.Registry
 import net.azisaba.gift.registry.registerK
@@ -22,6 +24,10 @@ interface Handler {
     companion object {
         init {
             Registry.HANDLER.registerK(SendMessage::class, SendMessage.serializer())
+            Registry.HANDLER_DEFAULT_VALUE.registerK(
+                SendMessage::class,
+                JSONWithoutRegistry.encodeToString(SendMessage("Hello, world!")),
+            )
             Registry.HANDLER.registerK(UnknownHandler::class, UnknownHandler.Serializer)
         }
     }
