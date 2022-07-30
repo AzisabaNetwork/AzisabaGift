@@ -18,6 +18,7 @@ import net.azisaba.gift.spigot.handlers.GivePlayerPoints
 import net.azisaba.gift.spigot.handlers.RunCommandOnServer
 import net.azisaba.gift.spigot.listeners.ItemOwnerListener
 import net.azisaba.gift.spigot.providers.SpigotDataProvider
+import net.azisaba.gift.spigot.selectors.HasPermissionOnServer
 import net.azisaba.gift.spigot.selectors.NearLocationSelector
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
@@ -88,6 +89,11 @@ class SpigotPlugin : JavaPlugin() {
         Registry.HANDLER_DEFAULT_VALUE.registerK(
             GivePlayerPoints::class,
             JSONWithoutRegistry.encodeToString(GivePlayerPoints(10)),
+        )
+        Registry.SELECTOR.registerK(HasPermissionOnServer::class, HasPermissionOnServer.serializer())
+        Registry.SELECTOR_DEFAULT_VALUE.registerK(
+            HasPermissionOnServer::class,
+            JSONWithoutRegistry.encodeToString(HasPermissionOnServer("azisabagift.*")),
         )
         Registry.SELECTOR.registerK(NearLocationSelector::class, NearLocationSelector.serializer())
         Registry.SELECTOR_DEFAULT_VALUE.registerK(

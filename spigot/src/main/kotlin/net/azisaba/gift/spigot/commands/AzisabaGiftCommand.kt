@@ -10,12 +10,15 @@ import net.azisaba.gift.config.SpigotPlatformConfig
 import net.azisaba.gift.objects.Codes
 import net.azisaba.gift.objects.CodesData
 import net.azisaba.gift.objects.CodesTable
+import net.azisaba.gift.objects.CompoundSelector
 import net.azisaba.gift.objects.HandlerList
 import net.azisaba.gift.objects.Nobody
+import net.azisaba.gift.objects.Selector
 import net.azisaba.gift.registry.Registry
 import net.azisaba.gift.registry.findSerializerBySerialName
 import net.azisaba.gift.spigot.SpigotPlugin
 import net.azisaba.gift.spigot.toFriendlyOutput
+import net.azisaba.gift.util.truncate
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.Material
@@ -24,6 +27,9 @@ import org.bukkit.command.CommandSender
 import org.bukkit.command.TabExecutor
 import org.bukkit.entity.Player
 import java.util.regex.Pattern
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 @OptIn(ExperimentalSerializationApi::class)
 private val commandMap by lazy {
@@ -45,6 +51,18 @@ private val commandMap by lazy {
                         .associateWith { (clazz, _) -> mapOf((Registry.EXPIRATION_STATUS_DEFAULT_VALUE.get(clazz) ?: "{}") to Unit) }
                         .mapKeys { (entry, _) -> entry.value.descriptor.serialName },
                     "allowedserver" to mapOf(".*" to Unit),
+                ),
+                "compoundselector" to mapOf(
+                    ":__any__:\$-or-comma,separated,position,from,1" to mapOf(
+                        "info" to Unit,
+                        "add" to Registry.SELECTOR
+                            .getReadonlyMap()
+                            .entries
+                            .associateWith { (clazz, _) -> mapOf((Registry.SELECTOR_DEFAULT_VALUE.get(clazz) ?: "{}") to Unit) }
+                            .mapKeys { (entry, _) -> entry.value.descriptor.serialName },
+                        "remove" to mapOf("<position-from-1>" to Unit),
+                        "clear" to Unit,
+                    ),
                 ),
                 "handlers" to mapOf(
                     "clear" to Unit,
@@ -161,14 +179,8 @@ class AzisabaGiftCommand : TabExecutor {
         return true
     }
 
-    override fun onTabComplete(
-        sender: CommandSender,
-        command: Command,
-        alias: String,
-        args: Array<String>,
-    ): List<String> {
-        return commandMap.getSuggestionsFor(args)
-    }
+    override fun onTabComplete(sender: CommandSender, command: Command, alias: String, args: Array<String>) =
+        commandMap.getSuggestionsFor(args)
 }
 
 internal object Impl {
@@ -205,6 +217,7 @@ internal object Impl {
                 "clearusage" -> clearUsage(sender, codes)
                 "set" -> Set.execute(sender, codes, args)
                 "handlers" -> Handlers.execute(sender, codes, args)
+                "compoundselector" -> CompoundSelector.execute(sender, codes, args)
             }
         }
 
@@ -217,7 +230,7 @@ internal object Impl {
                 "${ChatColor.GRAY} - ${ChatColor.GREEN}ID: ${ChatColor.YELLOW}${codes.id}"
             )
             sender.sendMessage(
-                "${ChatColor.GRAY} - ${ChatColor.GREEN}Selector (コードを使用できるプレイヤー): ${ChatColor.YELLOW}${codes.selector}"
+                "${ChatColor.GRAY} - ${ChatColor.GREEN}Selector (コードを使用できるプレイヤー): ${ChatColor.YELLOW}${codes.selector.toString().truncate(100)}"
             )
             sender.sendMessage(
                 "${ChatColor.GRAY} - ${ChatColor.GREEN}Handlerの数: ${ChatColor.YELLOW}${codes.handler.handlers.size}"
@@ -285,6 +298,7 @@ internal object Impl {
                 }
             }
 
+            @OptIn(ExperimentalSerializationApi::class)
             private suspend fun setSelector(
                 sender: CommandSender,
                 codes: Codes,
@@ -294,6 +308,9 @@ internal object Impl {
                 val serializer = Registry.SELECTOR.findSerializerBySerialName(type)
                 if (serializer == null) {
                     sender.sendMessage("${ChatColor.RED}指定されたSelectorは無効です。")
+                    return
+                }
+                if (sender.requires("azisabagift.types.selectors.${serializer.descriptor.serialName.replace('.', '_')}")) {
                     return
                 }
                 val selector = JSON.decodeFromString(serializer, data)
@@ -348,6 +365,148 @@ internal object Impl {
                     codes.id,
                 ).close()
                 sender.sendMessage("${ChatColor.GREEN}使用できるサーバーを${ChatColor.YELLOW}$regex${ChatColor.GREEN}に変更しました。")
+            }
+        }
+
+        object CompoundSelector {
+            suspend fun execute(sender: CommandSender, codes: Codes, args: List<String>) {
+                if (sender.requires("azisabagift.code.compoundselector")) return
+                if (args.isEmpty()) {
+                    sender.sendMessage("${ChatColor.RED}/azisabagift code <code> compoundselector ($ or comma,separated,position,from,1)")
+                    return
+                }
+                val selector = args[0]
+                execute(sender, codes, selector, args.drop(1))
+            }
+
+            private suspend fun execute(sender: CommandSender, codes: Codes, selector: String, args: List<String>) {
+                if (sender.requires("azisabagift.code.compoundselector")) return
+                if (args.isEmpty()) {
+                    val choices = commandMap
+                        .getAs<Map<String, Any>>("code")
+                        .getAs<Map<String, Any>>(":__any__:<code>")
+                        .getAs<Map<String, Any>>("compoundselector")
+                        .getAs<Map<String, Any>>(":__any__:\$-or-comma,separated,position,from,1")
+                        .keys
+                        .joinToString("|")
+                    sender.sendMessage("${ChatColor.RED}/azisabagift code <code> compoundselector ${args[0]} (${choices})")
+                    return
+                }
+                if (codes.selector !is net.azisaba.gift.objects.CompoundSelector) {
+                    sender.sendMessage("${ChatColor.RED}Selectorの種類がcompoundではありません。")
+                    return
+                }
+                when (args[0].lowercase()) {
+                    "info" -> info(sender, codes, selector)
+                    "add" -> {
+                        if (sender.requires("azisabagift.code.compoundselector.add")) return
+                        if (args.size < 2) {
+                            sender.sendMessage("${ChatColor.RED}/azisabagift code <code> compoundselector ${args[0]} add <type> [<data>]")
+                            return
+                        }
+                        val type = args[1]
+                        val data = args.drop(2).let { if (it.isEmpty()) "{}" else it.joinToString(" ") }
+                        add(sender, codes, selector, type, data)
+                    }
+                    "remove" -> {
+                        if (sender.requires("azisabagift.code.compoundselector.remove")) return
+                        if (args.size < 2) {
+                            sender.sendMessage("${ChatColor.RED}/azisabagift code <code> compoundselector ${args[0]} remove <position-from-1>")
+                            return
+                        }
+                        val position = args[1].toIntOrNull() ?: run {
+                            sender.sendMessage("${ChatColor.RED}指定された数値は無効です。")
+                            return
+                        }
+                        remove(sender, codes, selector, position)
+                    }
+                    "clear" -> clear(sender, codes, selector)
+                }
+            }
+
+            private fun info(
+                sender: CommandSender,
+                codes: Codes,
+                selectorSelector: String,
+            ) {
+                if (sender.requires("azisabagift.code.compoundselector.info")) return
+                val compound = resolveSelector(codes, selectorSelector)
+                sender.sendMessage("${ChatColor.GREEN}${ChatColor.BOLD}> ${ChatColor.RESET}${ChatColor.GREEN}Selector一覧:")
+                compound.selectors.forEachIndexed { index, selector ->
+                    sender.sendMessage("${ChatColor.GRAY} ${index + 1}. ${ChatColor.YELLOW}${selector.toString().truncate(50)}")
+                }
+            }
+
+            @OptIn(ExperimentalSerializationApi::class)
+            private suspend fun add(
+                sender: CommandSender,
+                codes: Codes,
+                selectorSelector: String,
+                type: String,
+                data: String,
+            ) {
+                if (sender.requires("azisabagift.code.compoundselector.add")) return
+                val serializer = Registry.SELECTOR.findSerializerBySerialName(type)
+                if (serializer == null) {
+                    sender.sendMessage("${ChatColor.RED}指定されたSelectorは無効です。")
+                    return
+                }
+                if (sender.requires("azisabagift.types.selectors.${serializer.descriptor.serialName.replace('.', '_')}")) {
+                    return
+                }
+                val selector = JSON.decodeFromString(serializer, data)
+                val newCodes = modifySelector(codes, selectorSelector) { compound ->
+                    compound.copy(compound.selectors.toMutableList().apply { add(selector) })
+                }
+                DatabaseManager.executeUpdate(
+                    "UPDATE `codes` SET `selector` = ? WHERE `id` = ?",
+                    JSON.encodeToString(newCodes.selector),
+                    codes.id,
+                ).close()
+                sender.sendMessage("${ChatColor.GREEN}${selector}を追加しました。")
+            }
+
+            private suspend fun remove(
+                sender: CommandSender,
+                codes: Codes,
+                selectorSelector: String,
+                position: Int,
+            ) {
+                if (sender.requires("azisabagift.code.compoundselector.remove")) return
+                var oldSelector: Selector
+                val newCodes = modifySelector(codes, selectorSelector) { compound ->
+                    if (position < 1 || position > compound.selectors.size) {
+                        sender.sendMessage("${ChatColor.RED}位置は1以上${compound.selectors.size}以下にしてください。")
+                        return
+                    }
+                    oldSelector = compound.selectors[position - 1]
+                    compound.copy(
+                        selectors = compound.selectors.toMutableList().apply { removeAt(position - 1) },
+                    )
+                }
+                DatabaseManager.executeUpdate(
+                    "UPDATE `codes` SET `selector` = ? WHERE `id` = ?",
+                    JSON.encodeToString(newCodes.selector),
+                    codes.id,
+                ).close()
+                sender.sendMessage("${ChatColor.GREEN}#${position} (${oldSelector})を削除しました。")
+            }
+
+            private suspend fun clear(
+                sender: CommandSender,
+                codes: Codes,
+                selectorSelector: String,
+            ) {
+                if (sender.requires("azisabagift.code.compoundselector.clear")) return
+                val newCodes = modifySelector(codes, selectorSelector) { compound ->
+                    compound.copy(selectors = emptyList())
+                }
+                DatabaseManager.executeUpdate(
+                    "UPDATE `codes` SET `selector` = ? WHERE `id` = ?",
+                    JSON.encodeToString(newCodes.selector),
+                    codes.id,
+                ).close()
+                sender.sendMessage("${ChatColor.GREEN}CompoundSelectorの内容をすべて削除しました。")
             }
         }
 
@@ -477,6 +636,9 @@ internal object Impl {
                 val serializer = Registry.HANDLER.findSerializerBySerialName(handlerType)
                 if (serializer == null) {
                     sender.sendMessage("${ChatColor.RED}Handlerが見つかりません。")
+                    return
+                }
+                if (sender.requires("azisabagift.types.handlers.${handlerType.replace('.', '_')}")) {
                     return
                 }
                 val handler = try {
@@ -657,6 +819,9 @@ internal object Impl {
                 sender.sendMessage("${ChatColor.RED}Handlerが見つかりません。")
                 return
             }
+            if (sender.requires("azisabagift.types.handlers.${handlerType.replace('.', '_')}")) {
+                return
+            }
             val handler = try {
                 JSON.decodeFromString(serializer, data)
             } catch (e: Exception) {
@@ -678,4 +843,71 @@ private fun CommandSender.requires(permission: String): Boolean {
     if (hasPermission(permission)) return false
     sendMessage("${ChatColor.RED}You don't have permission to do this.")
     return true
+}
+
+@OptIn(ExperimentalContracts::class)
+private inline fun modifySelector(codes: Codes, selectorSelector: String, mod: (CompoundSelector) -> CompoundSelector): Codes {
+    contract { callsInPlace(mod, InvocationKind.EXACTLY_ONCE) }
+    val selector = resolveSelector(codes, selectorSelector)
+    val newSelector = mod(selector)
+    return replaceSelector(codes, selectorSelector, newSelector)
+}
+
+private fun replaceSelector(codes: Codes, selector: String, compound: CompoundSelector): Codes {
+    if (codes.selector !is CompoundSelector) error("selector is not compound")
+    return if (selector == "$") {
+        codes.copy(selector = compound)
+    } else {
+        codes.copy(
+            selector = replaceSelector(
+                codes.selector as CompoundSelector,
+                compound,
+                selector.split(",").map { it.toInt() },
+            )
+        )
+    }
+}
+
+private fun replaceSelector(baseCompound: CompoundSelector, value: CompoundSelector, remaining: List<Int>): CompoundSelector {
+    val index = remaining[0]
+    if (index <= 0 || index > baseCompound.selectors.size) {
+        throw IllegalArgumentException("Invalid index: $index")
+    }
+    val sel = baseCompound.selectors[index - 1]
+    if (sel !is CompoundSelector) {
+        throw IllegalArgumentException("Selector is not instance of CompoundSelector: $sel")
+    }
+    if (remaining.size == 1) {
+        return sel.copy(selectors = sel.selectors.toMutableList().apply { set(index - 1, value) })
+    }
+    return replaceSelector(sel, value, remaining.drop(1))
+}
+
+private fun resolveSelector(codes: Codes, selector: String): CompoundSelector {
+    return if (selector == "$") {
+        codes.selector as CompoundSelector
+    } else {
+        resolveSelector(
+            codes.selector as CompoundSelector,
+            selector.split(",").map { it.toInt() },
+        )
+    }
+}
+
+private fun resolveSelector(
+    compound: CompoundSelector,
+    remaining: List<Int>,
+): CompoundSelector {
+    if (remaining.isEmpty()) {
+        return compound
+    }
+    val index = remaining[0]
+    if (index <= 0 || index > compound.selectors.size) {
+        throw IllegalArgumentException("Invalid index: $index")
+    }
+    val sel = compound.selectors[index - 1]
+    if (sel !is CompoundSelector) {
+        throw IllegalArgumentException("Selector is not instance of CompoundSelector: $sel")
+    }
+    return resolveSelector(sel, remaining.drop(1))
 }

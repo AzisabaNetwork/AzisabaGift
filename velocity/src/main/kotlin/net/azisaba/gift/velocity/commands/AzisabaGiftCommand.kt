@@ -46,6 +46,9 @@ object AzisabaGiftCommand : AbstractCommand() {
                         .then(literal("selector")
                             .requires { it.hasPermission("azisabagift.code.set.selector") }
                             .then(argument("type", StringArgumentType.string())
+                                .requiresWithContext { ctx, _ ->
+                                    ctx.source.hasPermission("azisabagift.types.selectors.${ctx.arguments["type"]?.result}")
+                                }
                                 .suggests { _, builder -> builder.suggest(Registry.SELECTOR.getValues().map { it.descriptor.serialName }) }
                                 .executesSuspend {
                                     AzisabaGiftCommandImpl.Code.Set.setSelector(
@@ -139,6 +142,9 @@ object AzisabaGiftCommand : AbstractCommand() {
                             .requires { it.hasPermission("azisabagift.code.handlers.insert") }
                             .then(argument("position-from-1", IntegerArgumentType.integer(1))
                                 .then(argument("handler_type", StringArgumentType.string())
+                                    .requiresWithContext { ctx, _ ->
+                                        ctx.source.hasPermission("azisabagift.types.handlers.${ctx.arguments["handler_type"]?.result}")
+                                    }
                                     .suggests(Registry.HANDLER.getValues().map { it.descriptor.serialName })
                                     .executesSuspend {
                                         AzisabaGiftCommandImpl.Code.Handlers.insert(
@@ -165,6 +171,9 @@ object AzisabaGiftCommand : AbstractCommand() {
                         .then(literal("append")
                             .requires { it.hasPermission("azisabagift.code.handlers.append") }
                             .then(argument("handler_type", StringArgumentType.string())
+                                .requiresWithContext { ctx, _ ->
+                                    ctx.source.hasPermission("azisabagift.types.handlers.${ctx.arguments["handler_type"]?.result}")
+                                }
                                 .suggests(Registry.HANDLER.getValues().map { it.descriptor.serialName })
                                 .executesSuspend {
                                     AzisabaGiftCommandImpl.Code.Handlers.append(

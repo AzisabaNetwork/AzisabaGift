@@ -42,6 +42,11 @@ interface Selector {
     companion object {
         init {
             // Make sure to register serializer when you create a new selector, or you will not be able to (de)serialize it.
+            Registry.SELECTOR.registerK(CompoundSelector::class, CompoundSelector.serializer())
+            Registry.SELECTOR_DEFAULT_VALUE.registerK(
+                CompoundSelector::class,
+                JSONWithoutRegistry.encodeToString(CompoundSelector(emptyList(), false)),
+            )
             Registry.SELECTOR.registerK(Everyone::class, Everyone.serializer())
             Registry.SELECTOR.registerK(Nobody::class, Nobody.serializer())
             Registry.SELECTOR.registerK(SinglePlayer::class, SinglePlayer.serializer())
@@ -71,6 +76,27 @@ interface Selector {
     }
 
     suspend fun isSelected(player: UUID): SelectorResult
+}
+
+@Serializable
+@SerialName("compound")
+data class CompoundSelector(val selectors: List<Selector> = emptyList(), val or: Boolean = false) : Selector {
+    override suspend fun isSelected(player: UUID): SelectorResult {
+        val result = if (or) {
+            selectors.any {
+                val localResult = it.isSelected(player)
+                if (localResult == SelectorResult.SKIP) return SelectorResult.SKIP
+                localResult == SelectorResult.TRUE
+            }
+        } else {
+            selectors.all {
+                val localResult = it.isSelected(player)
+                if (localResult == SelectorResult.SKIP) return SelectorResult.SKIP
+                localResult == SelectorResult.TRUE
+            }
+        }
+        return SelectorResult.of(result)
+    }
 }
 
 @Serializable

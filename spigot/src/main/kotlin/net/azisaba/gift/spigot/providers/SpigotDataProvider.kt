@@ -16,13 +16,4 @@ object SpigotDataProvider : FirstJoinedTimeProvider {
         withContext(MinecraftDispatcher.syncDispatcher) {
             Bukkit.getPlayer(uuid)?.firstPlayed ?: 0L
         }
-        /*
-        coroutineScope {
-            withContext(MinecraftDispatcher.asyncDispatcher) {
-                Bukkit.getPlayer(uuid)?.firstPlayed
-                    //?: Bukkit.getOfflinePlayer(uuid)?.firstPlayed // player should be online because player is online when executing /promo
-                    ?: 0L
-            }
-        }
-        */
 }
