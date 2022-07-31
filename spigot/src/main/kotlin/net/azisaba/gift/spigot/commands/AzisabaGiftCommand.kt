@@ -433,7 +433,7 @@ internal object Impl {
                 val compound = resolveSelector(codes, selectorSelector)
                 sender.sendMessage("${ChatColor.GREEN}${ChatColor.BOLD}> ${ChatColor.RESET}${ChatColor.GREEN}Selector一覧:")
                 compound.selectors.forEachIndexed { index, selector ->
-                    sender.sendMessage("${ChatColor.GRAY} ${index + 1}. ${ChatColor.YELLOW}${selector.toString().truncate(50)}")
+                    sender.sendMessage("${ChatColor.GRAY} ${index + 1}. ${ChatColor.YELLOW}${selector.toString().truncate(150)}")
                 }
             }
 
