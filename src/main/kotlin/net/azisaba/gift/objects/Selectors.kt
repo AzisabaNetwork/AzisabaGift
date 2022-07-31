@@ -82,6 +82,9 @@ interface Selector {
 @SerialName("compound")
 data class CompoundSelector(val selectors: List<Selector> = emptyList(), val or: Boolean = false) : Selector {
     override suspend fun isSelected(player: UUID): SelectorResult {
+        if (selectors.isEmpty()) {
+            throw IllegalArgumentException("Compound must have at least one selector (try adding one or more selector to the list)")
+        }
         val result = if (or) {
             selectors.any {
                 val localResult = it.isSelected(player)
