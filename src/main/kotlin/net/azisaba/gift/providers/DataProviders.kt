@@ -29,8 +29,8 @@ object DataProviders {
                     throw IllegalArgumentException("""
                         There are multiple matching providers with the name $name.
                         Please specify a provider using one of the following:
-                        - ${getAll(clazz).joinToString("\n- ") { c -> c.javaClass.typeName }}
-                    """.trimIndent())
+                        - 
+                    """.trimIndent() + getAll(clazz).joinToString("\n- ") { c -> c.javaClass.typeName })
                 } else if (it.isEmpty()) {
                     null
                 } else {
