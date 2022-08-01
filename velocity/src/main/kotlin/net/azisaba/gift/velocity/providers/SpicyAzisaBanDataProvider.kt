@@ -13,6 +13,11 @@ object SpicyAzisaBanDataProvider : FirstJoinedTimeProvider {
         DataProviders.register(FirstJoinedTimeProvider::class, this)
     }
 
+    override fun checkAvailability(): String? {
+        Class.forName("net.azisaba.spicyAzisaBan.struct.PlayerData")
+        return null
+    }
+
     override suspend fun getFirstJoinedTime(uuid: UUID) =
         coroutineScope {
             withContext(MinecraftDispatcher.asyncDispatcher) {

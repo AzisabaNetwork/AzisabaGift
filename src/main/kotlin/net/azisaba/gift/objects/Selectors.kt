@@ -131,10 +131,13 @@ data class MultiplePlayers(val players: List<@Contextual UUID>) : Selector {
 data class FirstJoinedAfter(val time: Long) : Selector {
     companion object {
         // provider for first join time
-        val provider = DataProviders.getSelected(
-            FirstJoinedTimeProvider::class.java,
-            PluginConfig.instance.providers.firstJoinedTime.split(","),
-        )::getFirstJoinedTime
+        @Suppress("SuspiciousCallableReferenceInLambda") // DataProviders#getSelected might throw exception
+        val provider by lazy {
+            DataProviders.getSelected(
+                FirstJoinedTimeProvider::class.java,
+                PluginConfig.instance.providers.firstJoinedTime.split(","),
+            )::getFirstJoinedTime
+        }
     }
 
     override suspend fun isSelected(player: UUID) = SelectorResult.of(provider(player) > time)
