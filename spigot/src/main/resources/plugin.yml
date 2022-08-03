@@ -1,6 +1,9 @@
 name: AzisabaGift
 version: @version@
 main: net.azisaba.gift.spigot.SpigotPlugin
+softdepend:
+  - TaxOffice
+  - PlayerPoints
 commands:
   promo:
     permission: azisabagift.command.promo

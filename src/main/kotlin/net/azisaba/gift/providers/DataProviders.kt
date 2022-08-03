@@ -10,7 +10,7 @@ interface DataProvider {
      * available.
      */
     @Throws(Exception::class)
-    fun checkAvailability(): String?
+    fun checkAvailability(): String? = null
 
     /**
      * Works like [checkAvailability] but does not throw an [Exception].

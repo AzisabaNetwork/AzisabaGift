@@ -17,7 +17,7 @@ subprojects {
 
 allprojects {
     group = "net.azisaba.gift"
-    version = "1.2.0-SNAPSHOT"
+    version = "1.2.1-SNAPSHOT"
 
     repositories {
         mavenCentral()

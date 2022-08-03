@@ -20,6 +20,7 @@ import net.azisaba.gift.spigot.listeners.ItemOwnerListener
 import net.azisaba.gift.spigot.providers.SpigotDataProvider
 import net.azisaba.gift.spigot.selectors.HasPermissionOnServer
 import net.azisaba.gift.spigot.selectors.NearLocationSelector
+import net.azisaba.gift.spigot.selectors.external.HasPointsInTaxOffice
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 import java.util.concurrent.Executor
@@ -99,6 +100,11 @@ class SpigotPlugin : JavaPlugin() {
         Registry.SELECTOR_DEFAULT_VALUE.registerK(
             NearLocationSelector::class,
             JSONWithoutRegistry.encodeToString(NearLocationSelector("world", 0.0, 0.0, 0.0, 5.0)),
+        )
+        Registry.SELECTOR.registerK(HasPointsInTaxOffice::class, HasPointsInTaxOffice.serializer())
+        Registry.SELECTOR_DEFAULT_VALUE.registerK(
+            HasPointsInTaxOffice::class,
+            JSONWithoutRegistry.encodeToString(HasPointsInTaxOffice(10)),
         )
     }
 }
